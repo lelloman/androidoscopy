@@ -3,6 +3,7 @@ package com.lelloman.androidoscopy
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import com.lelloman.androidoscopy.connection.DiscoveryListener
 import com.lelloman.androidoscopy.connection.ReconnectionManager
 import com.lelloman.androidoscopy.connection.WebSocketClient
 import com.lelloman.androidoscopy.connection.WebSocketEvent
@@ -259,7 +260,11 @@ object Androidoscopy {
         }
 
         // Try UDP discovery
-        // TODO: Implement UDP discovery listener
+        val discoveryListener = DiscoveryListener()
+        val serviceInfo = discoveryListener.discoverService(timeoutMs = 5_000)
+        if (serviceInfo != null && serviceInfo.host.isNotEmpty()) {
+            return serviceInfo.host
+        }
 
         return null
     }

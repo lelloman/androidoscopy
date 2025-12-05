@@ -411,7 +411,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement UDP discovery listener**
+- [x] **Implement UDP discovery listener**
   ```kotlin
   class DiscoveryListener {
       suspend fun discoverService(timeoutMs: Long = 10_000): ServiceInfo? {
