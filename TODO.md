@@ -551,7 +551,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Write unit tests for DSL builders**
+- [x] **Write unit tests for DSL builders**
 
   Verify generated JSON schema matches expected format.
 
