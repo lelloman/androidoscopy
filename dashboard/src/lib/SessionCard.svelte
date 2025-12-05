@@ -42,6 +42,7 @@
                     {section}
                     data={session.latest_data}
                     logs={session.recent_logs}
+                    sessionId={session.session_id}
                 />
             {/each}
         {/if}

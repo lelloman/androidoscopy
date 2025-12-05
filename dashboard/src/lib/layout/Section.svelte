@@ -7,9 +7,10 @@
         section: Section;
         data: unknown;
         logs?: LogEntry[];
+        sessionId: string;
     }
 
-    let { section, data, logs = [] }: Props = $props();
+    let { section, data, logs = [], sessionId }: Props = $props();
 
     let collapsed = $state(section.collapsed_default ?? false);
 
@@ -41,14 +42,14 @@
                 {#if section.widget.type === 'log_viewer'}
                     <LogViewer {logs} defaultLevel={section.widget.default_level} />
                 {:else}
-                    <Widget widget={section.widget} {data} />
+                    <Widget widget={section.widget} {data} {sessionId} />
                 {/if}
             {:else if section.widgets}
                 {#each section.widgets as widget}
                     {#if widget.type === 'log_viewer'}
                         <LogViewer {logs} defaultLevel={widget.default_level} />
                     {:else}
-                        <Widget {widget} {data} />
+                        <Widget {widget} {data} {sessionId} />
                     {/if}
                 {/each}
             {/if}

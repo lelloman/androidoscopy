@@ -244,9 +244,16 @@ pub struct LogEntry {
 pub enum DashboardToServiceMessage {
     #[serde(rename = "ACTION")]
     Action {
-        session_id: String,
-        payload: ActionPayload,
+        payload: DashboardActionPayload,
     },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DashboardActionPayload {
+    pub session_id: String,
+    pub action_id: String,
+    pub action: String,
+    pub args: Option<Value>,
 }
 
 // === Message Size Limits ===

@@ -13,8 +13,6 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private var clickCount = 0
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -23,29 +21,33 @@ class MainActivity : AppCompatActivity() {
         val clickCountText = findViewById<TextView>(R.id.clickCountText)
         val clickButton = findViewById<Button>(R.id.clickButton)
 
-        updateClickCount(clickCountText)
+        val app = application as? SampleApplication
 
         clickButton.setOnClickListener {
-            clickCount++
-            updateClickCount(clickCountText)
-            (application as? SampleApplication)?.incrementClickCount()
+            app?.incrementClickCount()
         }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Androidoscopy.connectionState.collect { state ->
-                    statusText.text = when (state) {
-                        is ConnectionState.Disconnected -> getString(R.string.connection_status_disconnected)
-                        is ConnectionState.Connecting -> getString(R.string.connection_status_connecting)
-                        is ConnectionState.Connected -> getString(R.string.connection_status_connected)
-                        is ConnectionState.Error -> getString(R.string.connection_status_error, state.message)
+                // Observe connection state
+                launch {
+                    Androidoscopy.connectionState.collect { state ->
+                        statusText.text = when (state) {
+                            is ConnectionState.Disconnected -> getString(R.string.connection_status_disconnected)
+                            is ConnectionState.Connecting -> getString(R.string.connection_status_connecting)
+                            is ConnectionState.Connected -> getString(R.string.connection_status_connected)
+                            is ConnectionState.Error -> getString(R.string.connection_status_error, state.message)
+                        }
+                    }
+                }
+
+                // Observe click count
+                launch {
+                    app?.clickCount?.collect { count ->
+                        clickCountText.text = getString(R.string.click_count_format, count)
                     }
                 }
             }
         }
-    }
-
-    private fun updateClickCount(textView: TextView) {
-        textView.text = getString(R.string.click_count_format, clickCount)
     }
 }

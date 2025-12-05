@@ -5,10 +5,14 @@ import android.util.Log
 import com.lelloman.androidoscopy.ActionResult
 import com.lelloman.androidoscopy.Androidoscopy
 import com.lelloman.androidoscopy.dashboard.ButtonStyle
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class SampleApplication : Application() {
 
-    private var clickCount = 0
+    private val _clickCount = MutableStateFlow(0)
+    val clickCount: StateFlow<Int> = _clickCount.asStateFlow()
 
     override fun onCreate() {
         super.onCreate()
@@ -47,7 +51,7 @@ class SampleApplication : Application() {
             }
 
             onAction("reset_counter") {
-                clickCount = 0
+                _clickCount.value = 0
                 updateMetrics()
                 ActionResult.success("Counter reset to 0")
             }
@@ -67,15 +71,16 @@ class SampleApplication : Application() {
     }
 
     fun incrementClickCount() {
-        clickCount++
+        _clickCount.value++
         updateMetrics()
     }
 
     private fun updateMetrics() {
+        val count = _clickCount.value
         Androidoscopy.updateData {
             put("metrics", mapOf(
-                "click_count" to clickCount,
-                "last_action" to if (clickCount == 0) "None" else "Button clicked"
+                "click_count" to count,
+                "last_action" to if (count == 0) "None" else "Button clicked"
             ))
         }
     }

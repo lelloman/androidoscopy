@@ -315,16 +315,22 @@ async fn handle_dashboard_connection(socket: WebSocket, state: AppState) {
         match result {
             Ok(Message::Text(text)) => {
                 match serde_json::from_str::<DashboardToServiceMessage>(&text) {
-                    Ok(DashboardToServiceMessage::Action { session_id, payload }) => {
+                    Ok(DashboardToServiceMessage::Action { payload }) => {
                         // Forward ACTION to the appropriate app
                         let manager = state.session_manager.lock().await;
+                        let session_id = &payload.session_id;
 
-                        if let Some(session) = manager.get_session(&session_id) {
+                        if let Some(session) = manager.get_session(session_id) {
                             if let Some(ref app_sender) = session.app_sender {
+                                let action_payload = crate::protocol::ActionPayload {
+                                    action_id: payload.action_id,
+                                    action: payload.action,
+                                    args: payload.args,
+                                };
                                 let action_msg = ServiceToAppMessage::Action {
                                     timestamp: Utc::now(),
                                     session_id: session_id.clone(),
-                                    payload,
+                                    payload: action_payload,
                                 };
 
                                 if app_sender.send(action_msg).await.is_err() {

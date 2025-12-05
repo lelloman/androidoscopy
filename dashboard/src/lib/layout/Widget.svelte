@@ -5,13 +5,16 @@
     import TextWidget from '../widgets/Text.svelte';
     import GaugeWidget from '../widgets/Gauge.svelte';
     import BadgeWidget from '../widgets/Badge.svelte';
+    import ButtonWidget from '../widgets/Button.svelte';
+    import TableWidget from '../widgets/Table.svelte';
 
     interface Props {
         widget: Widget;
         data: unknown;
+        sessionId: string;
     }
 
-    let { widget, data }: Props = $props();
+    let { widget, data, sessionId }: Props = $props();
 
     let visible = $derived(
         !widget.visible_when || evaluateCondition(data, widget.visible_when)
@@ -27,6 +30,10 @@
         <GaugeWidget {widget} {data} />
     {:else if widget.type === 'badge'}
         <BadgeWidget {widget} {data} />
+    {:else if widget.type === 'button'}
+        <ButtonWidget {widget} {sessionId} />
+    {:else if widget.type === 'table'}
+        <TableWidget {widget} {data} {sessionId} />
     {:else}
         <div class="unknown-widget">
             Unknown widget type: {widget.type}
