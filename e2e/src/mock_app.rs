@@ -41,6 +41,7 @@ pub enum AppMessage {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RegisterPayload {
+    pub protocol_version: String,
     pub app_name: String,
     pub package_name: String,
     pub version_name: String,
@@ -80,17 +81,21 @@ pub struct ActionResultPayload {
 pub enum ServerMessage {
     #[serde(rename = "REGISTERED")]
     Registered {
+        #[allow(dead_code)]
         timestamp: String,
         payload: RegisteredPayload,
     },
     #[serde(rename = "ACTION")]
     Action {
+        #[allow(dead_code)]
         timestamp: String,
+        #[allow(dead_code)]
         session_id: String,
         payload: ActionPayload,
     },
     #[serde(rename = "ERROR")]
     Error {
+        #[allow(dead_code)]
         timestamp: String,
         payload: ErrorPayload,
     },
@@ -105,7 +110,7 @@ pub struct RegisteredPayload {
 pub struct ActionPayload {
     pub action_id: String,
     pub action: String,
-    pub args: Value,
+    pub args: Option<Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -120,6 +125,8 @@ pub struct MockAppClient {
     sender: mpsc::Sender<AppMessage>,
     received_messages: Arc<Mutex<Vec<ServerMessage>>>,
     connected: Arc<Mutex<bool>>,
+    /// Close sender to trigger WebSocket close
+    close_tx: mpsc::Sender<()>,
 }
 
 impl MockAppClient {
@@ -129,6 +136,7 @@ impl MockAppClient {
         let (mut write, mut read) = ws_stream.split();
 
         let (tx, mut rx) = mpsc::channel::<AppMessage>(100);
+        let (close_tx, mut close_rx) = mpsc::channel::<()>(1);
         let received_messages: Arc<Mutex<Vec<ServerMessage>>> = Arc::new(Mutex::new(Vec::new()));
         let session_id: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
         let connected = Arc::new(Mutex::new(true));
@@ -166,12 +174,22 @@ impl MockAppClient {
             }
         });
 
-        // Spawn writer task
+        // Spawn writer task that also handles close requests
         tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                let text = serde_json::to_string(&msg).unwrap();
-                if write.send(Message::Text(text)).await.is_err() {
-                    break;
+            loop {
+                tokio::select! {
+                    Some(msg) = rx.recv() => {
+                        let text = serde_json::to_string(&msg).unwrap();
+                        if write.send(Message::Text(text.into())).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(()) = close_rx.recv() => {
+                        // Send close frame
+                        let _ = write.send(Message::Close(None)).await;
+                        break;
+                    }
+                    else => break,
                 }
             }
         });
@@ -181,7 +199,15 @@ impl MockAppClient {
             sender: tx,
             received_messages,
             connected,
+            close_tx,
         })
+    }
+
+    /// Disconnects the client by sending a close frame.
+    pub async fn disconnect(&self) {
+        let _ = self.close_tx.send(()).await;
+        // Give the close frame time to be sent
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
     }
 
     /// Registers the mock app with the server.
@@ -205,8 +231,9 @@ impl MockAppClient {
         });
 
         let msg = AppMessage::Register {
-            timestamp: chrono_timestamp(),
+            timestamp: iso_timestamp(),
             payload: RegisterPayload {
+                protocol_version: "1.0".to_string(),
                 app_name: app_name.to_string(),
                 package_name: package_name.to_string(),
                 version_name: "1.0.0".to_string(),
@@ -247,7 +274,7 @@ impl MockAppClient {
         let session_id = session_id.as_ref().ok_or("Not registered")?;
 
         let msg = AppMessage::Data {
-            timestamp: chrono_timestamp(),
+            timestamp: iso_timestamp(),
             session_id: session_id.clone(),
             payload: data,
         };
@@ -267,7 +294,7 @@ impl MockAppClient {
         let session_id = session_id.as_ref().ok_or("Not registered")?;
 
         let msg = AppMessage::Log {
-            timestamp: chrono_timestamp(),
+            timestamp: iso_timestamp(),
             session_id: session_id.clone(),
             payload: LogPayload {
                 level: level.to_string(),
@@ -328,7 +355,7 @@ impl MockAppClient {
         let session_id = session_id.as_ref().ok_or("Not registered")?;
 
         let msg = AppMessage::ActionResult {
-            timestamp: chrono_timestamp(),
+            timestamp: iso_timestamp(),
             session_id: session_id.clone(),
             payload: ActionResultPayload {
                 action_id: action_id.to_string(),
@@ -343,13 +370,8 @@ impl MockAppClient {
     }
 }
 
-fn chrono_timestamp() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
-    format!("{}Z", now)
+fn iso_timestamp() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
 #[cfg(test)]
@@ -359,6 +381,7 @@ mod tests {
     #[test]
     fn test_register_payload_serialization() {
         let payload = RegisterPayload {
+            protocol_version: "1.0".to_string(),
             app_name: "Test App".to_string(),
             package_name: "com.test.app".to_string(),
             version_name: "1.0.0".to_string(),
@@ -376,12 +399,13 @@ mod tests {
         let json = serde_json::to_string(&payload).unwrap();
         assert!(json.contains("Test App"));
         assert!(json.contains("com.test.app"));
+        assert!(json.contains("protocol_version"));
     }
 
     #[test]
     fn test_app_message_serialization() {
         let msg = AppMessage::Data {
-            timestamp: "123Z".to_string(),
+            timestamp: "2024-12-05T14:30:00.000Z".to_string(),
             session_id: "session-1".to_string(),
             payload: json!({"value": 42}),
         };

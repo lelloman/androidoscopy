@@ -1304,7 +1304,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   Simulates SDK behavior for testing server + dashboard without real Android.
 
-- [ ] **Write full stack test scenarios**
+- [x] **Write full stack test scenarios**
   - App connects → Dashboard shows session
   - App sends DATA → Dashboard widgets update
   - App sends LOG → Log viewer updates
