@@ -449,7 +449,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   Handle app lifecycle (start connection on init, reconnect on network change).
 
-- [ ] **Write unit tests for connection logic**
+- [x] **Write unit tests for connection logic**
 
   Test emulator detection, IP resolution, backoff calculation.
 
