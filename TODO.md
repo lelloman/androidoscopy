@@ -1180,7 +1180,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   Render appropriate input based on field type (text, number, select, checkbox).
 
-- [ ] **Write component tests for dialogs**
+- [x] **Write component tests for dialogs**
 
 ### 4.8 Toast Notifications
 
