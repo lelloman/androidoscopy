@@ -60,7 +60,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 1.2 CI/CD Setup
 
-- [ ] **Create GitHub Actions workflow for server**
+- [x] **Create GitHub Actions workflow for server**
   ```yaml
   # .github/workflows/server.yml
   - cargo fmt --check
@@ -68,14 +68,14 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   - cargo test
   ```
 
-- [ ] **Create GitHub Actions workflow for SDK**
+- [x] **Create GitHub Actions workflow for SDK**
   ```yaml
   # .github/workflows/sdk.yml
   - ./gradlew test
   - ./gradlew connectedTest (with emulator)
   ```
 
-- [ ] **Create GitHub Actions workflow for dashboard**
+- [x] **Create GitHub Actions workflow for dashboard**
   ```yaml
   # .github/workflows/dashboard.yml
   - npm run lint
@@ -1349,7 +1349,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 | Phase | Tasks | Status |
 |-------|-------|--------|
-| 1. Project Setup | 8 | Not started |
+| 1. Project Setup | 8 | Completed |
 | 2. Server | 22 | Not started |
 | 3. SDK | 28 | Not started |
 | 4. Dashboard | 32 | Not started |

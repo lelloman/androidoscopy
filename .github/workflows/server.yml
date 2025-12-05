@@ -1,0 +1,49 @@
+name: Server CI
+
+on:
+  push:
+    branches: [main, implementation]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            server/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('server/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test
