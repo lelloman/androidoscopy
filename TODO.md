@@ -654,7 +654,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement Timber tree for easy integration**
+- [x] **Implement Timber tree for easy integration**
   ```kotlin
   class AndroidoscopyTree : Timber.Tree() {
       override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -663,7 +663,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Write unit tests for logging**
+- [x] **Write unit tests for logging**
 
 ### 3.7 Protocol Implementation
 
@@ -701,7 +701,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Write unit tests for message serialization**
+- [x] **Write unit tests for message serialization**
 
 ---
 
