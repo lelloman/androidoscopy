@@ -1,7 +1,8 @@
 <script lang="ts">
-    import type { GaugeWidget, Threshold } from '../types/protocol';
+    import type { GaugeWidget } from '../types/protocol';
     import { evaluateNumberPath } from '../jsonpath';
     import { formatValue } from '../format';
+    import { getThresholdStyle } from './threshold';
 
     interface Props {
         widget: GaugeWidget;
@@ -17,24 +18,6 @@
     let formattedMax = $derived(formatValue(max, widget.format));
 
     let style = $derived(getThresholdStyle(percentage / 100, widget.thresholds));
-
-    function getThresholdStyle(ratio: number, thresholds?: Threshold[]): string {
-        if (!thresholds || thresholds.length === 0) {
-            // Default thresholds
-            if (ratio >= 0.9) return 'danger';
-            if (ratio >= 0.75) return 'warning';
-            return 'success';
-        }
-
-        // Sort thresholds by value descending
-        const sorted = [...thresholds].sort((a, b) => b.value - a.value);
-        for (const threshold of sorted) {
-            if (ratio >= threshold.value) {
-                return threshold.style;
-            }
-        }
-        return 'success';
-    }
 </script>
 
 <div class="gauge-widget">

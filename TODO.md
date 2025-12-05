@@ -965,7 +965,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </script>
   ```
 
-- [ ] **Write component tests for all widgets**
+- [x] **Write component tests for all widgets**
 
 ### 4.5 Log Viewer Widget
 
