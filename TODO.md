@@ -1123,13 +1123,13 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement threshold-based styling**
+- [x] **Implement threshold-based styling**
 
 - [ ] **Write component tests for layout**
 
 ### 4.7 Action Dialogs
 
-- [ ] **Implement ArgsDialog component**
+- [x] **Implement ArgsDialog component**
   ```svelte
   <!-- src/lib/dialogs/ArgsDialog.svelte -->
   <script lang="ts">
@@ -1176,7 +1176,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   {/if}
   ```
 
-- [ ] **Implement DialogField component**
+- [x] **Implement DialogField component**
 
   Render appropriate input based on field type (text, number, select, checkbox).
 
@@ -1184,7 +1184,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.8 Toast Notifications
 
-- [ ] **Implement Toast store and component**
+- [x] **Implement Toast store and component**
   ```typescript
   // src/lib/stores/toasts.ts
   import { writable } from 'svelte/store';
@@ -1210,7 +1210,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement ToastContainer component**
+- [x] **Implement ToastContainer component**
 
 ### 4.9 Main App Layout
 
