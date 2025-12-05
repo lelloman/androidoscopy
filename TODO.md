@@ -89,7 +89,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 2.1 Core Infrastructure
 
-- [ ] **Create basic Axum server skeleton**
+- [x] **Create basic Axum server skeleton**
 
   Set up entry point with HTTP and WebSocket servers:
   ```rust
@@ -105,7 +105,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement configuration loading**
+- [x] **Implement configuration loading**
 
   Parse `~/.androidoscopy/config.toml`:
   ```rust
@@ -130,7 +130,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Set up tracing/logging**
+- [x] **Set up tracing/logging**
 
   Configure `tracing` subscriber with configurable log level from config.
 
