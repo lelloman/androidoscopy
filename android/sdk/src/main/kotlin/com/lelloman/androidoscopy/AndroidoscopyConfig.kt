@@ -22,7 +22,7 @@ data class ActionResult(
 class AndroidoscopyConfig {
     var appName: String? = null
     var hostIp: String? = null
-    var port: Int = 9999
+    var port: Int = 8080
     var autoConnect: Boolean = true
     var enableLogging: Boolean = true
 

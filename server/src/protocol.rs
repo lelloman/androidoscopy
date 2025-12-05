@@ -158,29 +158,58 @@ pub enum ServiceToDashboardMessage {
     #[serde(rename = "SYNC")]
     Sync { payload: SyncPayload },
     #[serde(rename = "SESSION_STARTED")]
-    SessionStarted { payload: SessionInfo },
+    SessionStarted { payload: SessionStartedPayload },
     #[serde(rename = "SESSION_DATA")]
     SessionData {
-        session_id: String,
-        payload: Value,
         timestamp: DateTime<Utc>,
+        payload: SessionDataPayload,
     },
     #[serde(rename = "SESSION_LOG")]
     SessionLog {
-        session_id: String,
-        payload: LogPayload,
         timestamp: DateTime<Utc>,
+        payload: SessionLogPayload,
     },
     #[serde(rename = "SESSION_ENDED")]
     SessionEnded {
-        session_id: String,
         timestamp: DateTime<Utc>,
+        payload: SessionEndedPayload,
     },
     #[serde(rename = "ACTION_RESULT")]
     ActionResult {
-        session_id: String,
-        payload: ActionResultPayload,
+        timestamp: DateTime<Utc>,
+        payload: ActionResultToDashboardPayload,
     },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionStartedPayload {
+    pub session: SessionInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionDataPayload {
+    pub session_id: String,
+    pub data: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionLogPayload {
+    pub session_id: String,
+    pub log: LogEntry,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionEndedPayload {
+    pub session_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActionResultToDashboardPayload {
+    pub session_id: String,
+    pub action_id: String,
+    pub success: bool,
+    pub message: Option<String>,
+    pub data: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

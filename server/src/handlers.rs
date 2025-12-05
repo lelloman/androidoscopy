@@ -34,8 +34,9 @@ use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 use crate::protocol::{
-    AppMessage, DashboardToServiceMessage, RegisteredPayload, ServiceToAppMessage,
-    ServiceToDashboardMessage, SyncPayload,
+    ActionResultToDashboardPayload, AppMessage, DashboardToServiceMessage, LogEntry,
+    RegisteredPayload, ServiceToAppMessage, ServiceToDashboardMessage, SessionDataPayload,
+    SessionEndedPayload, SessionLogPayload, SessionStartedPayload, SyncPayload,
 };
 use crate::state::AppState;
 
@@ -90,7 +91,9 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
                         // Notify dashboards about new session
                         if let Some(session) = manager.get_session(&session_id) {
                             let msg = ServiceToDashboardMessage::SessionStarted {
-                                payload: session.to_session_info(),
+                                payload: SessionStartedPayload {
+                                    session: session.to_session_info(),
+                                },
                             };
                             broadcast_to_dashboards(&manager, msg).await;
                         }
@@ -160,9 +163,11 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
 
                                 // Forward to dashboards
                                 let msg = ServiceToDashboardMessage::SessionData {
-                                    session_id: session_id_clone.clone(),
-                                    payload,
                                     timestamp,
+                                    payload: SessionDataPayload {
+                                        session_id: session_id_clone.clone(),
+                                        data: payload,
+                                    },
                                 };
                                 broadcast_to_dashboards(&manager, msg).await;
                             }
@@ -180,17 +185,26 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
                                 manager.add_log(&session_id_clone, timestamp, payload.clone());
 
                                 // Forward to dashboards
-                                let msg = ServiceToDashboardMessage::SessionLog {
-                                    session_id: session_id_clone.clone(),
-                                    payload,
+                                let log_entry = LogEntry {
                                     timestamp,
+                                    level: payload.level,
+                                    tag: payload.tag,
+                                    message: payload.message,
+                                    throwable: payload.throwable,
+                                };
+                                let msg = ServiceToDashboardMessage::SessionLog {
+                                    timestamp,
+                                    payload: SessionLogPayload {
+                                        session_id: session_id_clone.clone(),
+                                        log: log_entry,
+                                    },
                                 };
                                 broadcast_to_dashboards(&manager, msg).await;
                             }
                             AppMessage::ActionResult {
                                 session_id: msg_session_id,
+                                timestamp,
                                 payload,
-                                ..
                             } => {
                                 if msg_session_id != session_id_clone {
                                     warn!("Session ID mismatch in ACTION_RESULT message");
@@ -201,8 +215,14 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
 
                                 // Forward to dashboards
                                 let msg = ServiceToDashboardMessage::ActionResult {
-                                    session_id: session_id_clone.clone(),
-                                    payload,
+                                    timestamp,
+                                    payload: ActionResultToDashboardPayload {
+                                        session_id: session_id_clone.clone(),
+                                        action_id: payload.action_id,
+                                        success: payload.success,
+                                        message: payload.message,
+                                        data: payload.data,
+                                    },
                                 };
                                 broadcast_to_dashboards(&manager, msg).await;
                             }
@@ -240,8 +260,10 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
 
         // Notify dashboards
         let msg = ServiceToDashboardMessage::SessionEnded {
-            session_id: session_id.clone(),
             timestamp: Utc::now(),
+            payload: SessionEndedPayload {
+                session_id: session_id.clone(),
+            },
         };
         broadcast_to_dashboards(&manager, msg).await;
     }
