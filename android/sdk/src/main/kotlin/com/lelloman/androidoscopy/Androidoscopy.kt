@@ -1,5 +1,6 @@
 package com.lelloman.androidoscopy
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
@@ -36,6 +37,7 @@ import kotlinx.serialization.json.buildJsonObject
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
+@SuppressLint("StaticFieldLeak")
 object Androidoscopy {
     private var config: AndroidoscopyConfig? = null
     private var context: Context? = null
