@@ -9,6 +9,7 @@
         activeSessionCount
     } from './lib/stores/connection';
     import SessionCard from './lib/SessionCard.svelte';
+    import ToastContainer from './lib/ToastContainer.svelte';
 
     onMount(() => {
         connect();
@@ -62,6 +63,8 @@
         {/if}
     </div>
 </main>
+
+<ToastContainer />
 
 <style>
     :global(:root) {
