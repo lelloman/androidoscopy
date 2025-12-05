@@ -1321,7 +1321,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 - [x] **Write README.md with quick start guide**
 
-- [ ] **Write SDK integration guide**
+- [x] **Write SDK integration guide**
 
   Step-by-step for adding to an Android project.
 
