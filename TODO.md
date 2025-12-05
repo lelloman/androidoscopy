@@ -1319,7 +1319,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 6.1 Documentation
 
-- [ ] **Write README.md with quick start guide**
+- [x] **Write README.md with quick start guide**
 
 - [ ] **Write SDK integration guide**
 
