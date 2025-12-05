@@ -867,11 +867,11 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </div>
   ```
 
-- [ ] **Implement Number widget**
+- [x] **Implement Number widget**
 
-- [ ] **Implement Text widget**
+- [x] **Implement Text widget**
 
-- [ ] **Implement Badge widget**
+- [x] **Implement Badge widget**
   ```svelte
   <!-- src/lib/widgets/Badge.svelte -->
   <script lang="ts">
@@ -888,7 +888,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </div>
   ```
 
-- [ ] **Implement Table widget**
+- [x] **Implement Table widget**
   ```svelte
   <!-- src/lib/widgets/Table.svelte -->
   <script lang="ts">
@@ -934,7 +934,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </table>
   ```
 
-- [ ] **Implement Button widget with states**
+- [x] **Implement Button widget with states**
   ```svelte
   <!-- src/lib/widgets/Button.svelte -->
   <script lang="ts">
@@ -969,7 +969,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.5 Log Viewer Widget
 
-- [ ] **Implement LogViewer component**
+- [x] **Implement LogViewer component**
   ```svelte
   <!-- src/lib/widgets/LogViewer.svelte -->
   <script lang="ts">
@@ -1023,7 +1023,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </div>
   ```
 
-- [ ] **Implement LogEntry component**
+- [x] **Implement LogEntry component**
   ```svelte
   <!-- src/lib/widgets/LogEntry.svelte -->
   <script lang="ts">
@@ -1052,7 +1052,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.6 Layout System
 
-- [ ] **Implement Section component**
+- [x] **Implement Section component**
   ```svelte
   <!-- src/lib/layout/Section.svelte -->
   <script lang="ts">
@@ -1085,7 +1085,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </div>
   ```
 
-- [ ] **Implement Widget dispatcher component**
+- [x] **Implement Widget dispatcher component**
   ```svelte
   <!-- src/lib/layout/Widget.svelte -->
   <script lang="ts">
@@ -1107,7 +1107,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   {/if}
   ```
 
-- [ ] **Implement conditional rendering (visible_when)**
+- [x] **Implement conditional rendering (visible_when)**
   ```typescript
   function evaluateCondition(condition: VisibleWhen, data: unknown): boolean {
       const value = evaluatePath(data, condition.path);

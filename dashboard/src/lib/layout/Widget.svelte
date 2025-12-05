@@ -2,6 +2,7 @@
     import type { Widget } from '../types/protocol';
     import { evaluateCondition } from '../jsonpath';
     import NumberWidget from '../widgets/Number.svelte';
+    import TextWidget from '../widgets/Text.svelte';
     import GaugeWidget from '../widgets/Gauge.svelte';
     import BadgeWidget from '../widgets/Badge.svelte';
 
@@ -20,12 +21,12 @@
 {#if visible}
     {#if widget.type === 'number'}
         <NumberWidget {widget} {data} />
+    {:else if widget.type === 'text'}
+        <TextWidget {widget} {data} />
     {:else if widget.type === 'gauge'}
         <GaugeWidget {widget} {data} />
     {:else if widget.type === 'badge'}
         <BadgeWidget {widget} {data} />
-    {:else if widget.type === 'text'}
-        <NumberWidget widget={{ ...widget, type: 'number', format: 'text' } as any} {data} />
     {:else}
         <div class="unknown-widget">
             Unknown widget type: {widget.type}
