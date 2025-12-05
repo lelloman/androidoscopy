@@ -1288,7 +1288,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 5.1 Full Stack Integration Tests
 
-- [ ] **Create E2E test harness**
+- [x] **Create E2E test harness**
   ```
   e2e/
   ├── src/

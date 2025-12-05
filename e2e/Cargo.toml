@@ -1,0 +1,24 @@
+[package]
+name = "e2e-tests"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "e2e_tests"
+path = "src/lib.rs"
+
+[[bin]]
+name = "e2e-runner"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+# The server library for starting test servers
+androidoscopy-server = { path = "../server" }
