@@ -840,7 +840,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Write unit tests for format functions**
+- [x] **Write unit tests for format functions**
 
 ### 4.4 Widget Components
 
