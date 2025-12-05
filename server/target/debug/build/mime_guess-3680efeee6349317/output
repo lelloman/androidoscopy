@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/home/lelloman/androidoscopy/server/target/debug/build/mime_guess-3680efeee6349317/out/mime_types_generated.rs

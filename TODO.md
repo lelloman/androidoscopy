@@ -25,7 +25,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   └── README.md
   ```
 
-- [ ] **Initialize Rust project for server**
+- [x] **Initialize Rust project for server**
   ```bash
   cd server
   cargo init --name androidoscopy-server
