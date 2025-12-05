@@ -87,7 +87,7 @@ fn default_log_level() -> String {
 }
 
 fn default_static_dir() -> String {
-    "./static".to_string()
+    "../dashboard/dist".to_string()
 }
 
 impl Default for Config {
