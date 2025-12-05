@@ -1341,7 +1341,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   - Virtual scrolling for log viewer if needed
   - Debounce rapid data updates
 
-- [ ] **Accessibility review**
+- [x] **Accessibility review**
 
 ---
 

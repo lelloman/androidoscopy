@@ -73,13 +73,15 @@
         class={buttonClass}
         onclick={handleClick}
         disabled={buttonState === 'loading'}
+        aria-label={buttonState === 'loading' ? `${widget.label} - loading` : buttonState === 'success' ? `${widget.label} - success` : buttonState === 'error' ? `${widget.label} - error` : widget.label}
+        aria-busy={buttonState === 'loading'}
     >
         {#if buttonState === 'loading'}
-            <span class="spinner"></span>
+            <span class="spinner" aria-hidden="true"></span>
         {:else if buttonState === 'success'}
-            ✓
+            <span aria-hidden="true">✓</span>
         {:else if buttonState === 'error'}
-            ✕
+            <span aria-hidden="true">✕</span>
         {:else}
             {widget.label}
         {/if}

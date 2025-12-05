@@ -56,21 +56,28 @@
 </script>
 
 <div class="log-viewer">
-    <div class="filters">
-        <select bind:value={levelFilter}>
+    <div class="filters" role="search" aria-label="Log filters">
+        <label class="visually-hidden" for="level-filter">Log level</label>
+        <select id="level-filter" bind:value={levelFilter} aria-label="Filter by log level">
             {#each LOG_LEVELS as level}
                 <option value={level}>{level}</option>
             {/each}
         </select>
+        <label class="visually-hidden" for="tag-filter">Tag filter</label>
         <input
+            id="tag-filter"
             type="text"
             placeholder="Filter by tag..."
             bind:value={tagFilter}
+            aria-label="Filter by tag"
         />
+        <label class="visually-hidden" for="search-filter">Search logs</label>
         <input
+            id="search-filter"
             type="text"
             placeholder="Search..."
             bind:value={searchFilter}
+            aria-label="Search log messages"
         />
     </div>
 
@@ -224,5 +231,17 @@
 
     .jump-to-bottom:hover {
         opacity: 0.9;
+    }
+
+    .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 </style>
