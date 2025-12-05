@@ -49,7 +49,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   - Min SDK 24 (Android 7.0)
   - Dependencies: OkHttp, Kotlinx Serialization, Coroutines
 
-- [ ] **Initialize Svelte dashboard project**
+- [x] **Initialize Svelte dashboard project**
   ```bash
   cd dashboard
   npm create vite@latest . -- --template svelte-ts
