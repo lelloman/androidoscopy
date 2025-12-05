@@ -1325,7 +1325,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   Step-by-step for adding to an Android project.
 
-- [ ] **Write custom dashboard tutorial**
+- [x] **Write custom dashboard tutorial**
 
   How to create custom sections and widgets.
 
