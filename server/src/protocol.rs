@@ -159,6 +159,8 @@ pub enum ServiceToDashboardMessage {
     Sync { payload: SyncPayload },
     #[serde(rename = "SESSION_STARTED")]
     SessionStarted { payload: SessionStartedPayload },
+    #[serde(rename = "SESSION_RESUMED")]
+    SessionResumed { payload: SessionStartedPayload },
     #[serde(rename = "SESSION_DATA")]
     SessionData {
         timestamp: DateTime<Utc>,

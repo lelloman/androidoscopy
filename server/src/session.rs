@@ -150,6 +150,11 @@ impl Session {
         self.app_sender = None;
     }
 
+    pub fn resume(&mut self, app_sender: mpsc::Sender<ServiceToAppMessage>) {
+        self.ended_at = None;
+        self.app_sender = Some(app_sender);
+    }
+
     pub fn to_session_info(&self) -> SessionInfo {
         SessionInfo {
             session_id: self.id.clone(),
@@ -190,16 +195,34 @@ impl SessionManager {
         &mut self,
         register: RegisterPayload,
         app_sender: mpsc::Sender<ServiceToAppMessage>,
-    ) -> String {
-        let session = Session::new(
-            register,
-            self.data_buffer_size,
-            self.log_buffer_size,
-            app_sender,
-        );
-        let session_id = session.id.clone();
-        self.sessions.insert(session_id.clone(), session);
-        session_id
+    ) -> (String, bool) {
+        // Check for existing ended session from same device + package
+        let existing_session_id = self.sessions.iter()
+            .find(|(_, s)| {
+                s.ended_at.is_some()
+                    && s.device.device_id == register.device.device_id
+                    && s.package_name == register.package_name
+            })
+            .map(|(id, _)| id.clone());
+
+        if let Some(session_id) = existing_session_id {
+            // Resume existing session
+            if let Some(session) = self.sessions.get_mut(&session_id) {
+                session.resume(app_sender);
+            }
+            (session_id, true) // true = resumed
+        } else {
+            // Create new session
+            let session = Session::new(
+                register,
+                self.data_buffer_size,
+                self.log_buffer_size,
+                app_sender,
+            );
+            let session_id = session.id.clone();
+            self.sessions.insert(session_id.clone(), session);
+            (session_id, false) // false = new session
+        }
     }
 
     pub fn end_session(&mut self, session_id: &str) {

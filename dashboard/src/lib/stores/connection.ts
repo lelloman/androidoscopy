@@ -117,6 +117,9 @@ function handleMessage(message: ServiceToDashboardMessage) {
         case 'SESSION_STARTED':
             handleSessionStarted(message.payload.session);
             break;
+        case 'SESSION_RESUMED':
+            handleSessionResumed(message.payload.session);
+            break;
         case 'SESSION_DATA':
             handleSessionData(message.payload.session_id, message.payload.data);
             break;
@@ -149,6 +152,24 @@ function handleSessionStarted(session: Session) {
     }
     sessions.update(map => {
         map.set(session.session_id, session);
+        return new Map(map);
+    });
+}
+
+function handleSessionResumed(session: Session) {
+    sessions.update(map => {
+        const existing = map.get(session.session_id);
+        if (existing) {
+            // Keep existing logs and data, just clear ended_at
+            existing.ended_at = undefined;
+            map.set(session.session_id, { ...existing });
+        } else {
+            // Shouldn't happen, but handle gracefully
+            if (!session.recent_logs) {
+                session.recent_logs = [];
+            }
+            map.set(session.session_id, session);
+        }
         return new Map(map);
     });
 }

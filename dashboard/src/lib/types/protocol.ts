@@ -184,6 +184,7 @@ export interface LogEntry {
 export type ServiceToDashboardMessage =
     | SyncMessage
     | SessionStartedMessage
+    | SessionResumedMessage
     | SessionDataMessage
     | SessionLogMessage
     | SessionEndedMessage
@@ -199,6 +200,14 @@ export interface SyncMessage {
 
 export interface SessionStartedMessage {
     type: 'SESSION_STARTED';
+    timestamp: string;
+    payload: {
+        session: Session;
+    };
+}
+
+export interface SessionResumedMessage {
+    type: 'SESSION_RESUMED';
     timestamp: string;
     payload: {
         session: Session;

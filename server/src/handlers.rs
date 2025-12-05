@@ -71,7 +71,7 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
                     Ok(AppMessage::Register { payload, .. }) => {
                         // Validate the message
                         let mut manager = state.session_manager.lock().await;
-                        let session_id = manager.create_session(payload, tx.clone());
+                        let (session_id, resumed) = manager.create_session(payload, tx.clone());
 
                         // Send REGISTERED response
                         let response = ServiceToAppMessage::Registered {
@@ -88,17 +88,29 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
                             }
                         }
 
-                        // Notify dashboards about new session
+                        // Notify dashboards about session
                         if let Some(session) = manager.get_session(&session_id) {
-                            let msg = ServiceToDashboardMessage::SessionStarted {
-                                payload: SessionStartedPayload {
-                                    session: session.to_session_info(),
-                                },
-                            };
-                            broadcast_to_dashboards(&manager, msg).await;
+                            if resumed {
+                                // Send SESSION_RESUMED for reconnecting devices
+                                let msg = ServiceToDashboardMessage::SessionResumed {
+                                    payload: SessionStartedPayload {
+                                        session: session.to_session_info(),
+                                    },
+                                };
+                                broadcast_to_dashboards(&manager, msg).await;
+                                info!("App resumed session_id: {}", session_id);
+                            } else {
+                                // Send SESSION_STARTED for new devices
+                                let msg = ServiceToDashboardMessage::SessionStarted {
+                                    payload: SessionStartedPayload {
+                                        session: session.to_session_info(),
+                                    },
+                                };
+                                broadcast_to_dashboards(&manager, msg).await;
+                                info!("App registered with session_id: {}", session_id);
+                            }
                         }
 
-                        info!("App registered with session_id: {}", session_id);
                         break session_id;
                     }
                     Ok(_) => {
