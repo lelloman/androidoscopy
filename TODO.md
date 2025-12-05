@@ -302,7 +302,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   Some networks block broadcast; make it optional.
 
-- [ ] **Write integration test for UDP discovery**
+- [x] **Write integration test for UDP discovery**
 
   Start server, listen for broadcast on port 9998, verify message format.
 
