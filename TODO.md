@@ -175,7 +175,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 2.3 Session Management
 
-- [ ] **Create Session struct**
+- [x] **Create Session struct**
   ```rust
   struct Session {
       id: String,
@@ -192,7 +192,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement SessionManager**
+- [x] **Implement SessionManager**
   ```rust
   struct SessionManager {
       sessions: HashMap<String, Session>,
@@ -210,7 +210,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement ring buffer for DATA and LOG messages**
+- [x] **Implement ring buffer for DATA and LOG messages**
 
   Fixed-size buffer that overwrites oldest entries:
   ```rust
@@ -225,7 +225,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Write unit tests for SessionManager**
+- [x] **Write unit tests for SessionManager**
 
   Test session lifecycle, buffer limits, TTL cleanup.
 
