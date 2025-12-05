@@ -136,7 +136,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 2.2 Message Protocol
 
-- [ ] **Define message types**
+- [x] **Define message types**
 
   Create structs for all protocol messages:
   ```rust
@@ -162,14 +162,14 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   // Similar for Dashboard messages...
   ```
 
-- [ ] **Implement message parsing with validation**
+- [x] **Implement message parsing with validation**
 
   Parse incoming JSON, validate required fields, enforce size limits:
   - Single message: 1 MB max
   - LOG message field: 64 KB max
   - LOG throwable field: 256 KB max
 
-- [ ] **Write unit tests for message parsing**
+- [x] **Write unit tests for message parsing**
 
   Test valid messages, malformed JSON, missing fields, oversized payloads.
 
