@@ -1125,7 +1125,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 - [x] **Implement threshold-based styling**
 
-- [ ] **Write component tests for layout**
+- [x] **Write component tests for layout**
 
 ### 4.7 Action Dialogs
 
