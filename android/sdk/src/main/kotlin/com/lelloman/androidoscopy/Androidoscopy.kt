@@ -1,6 +1,6 @@
 package com.lelloman.androidoscopy
 
-import android.annotation.SuppressLint
+import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
@@ -37,315 +37,344 @@ import kotlinx.serialization.json.buildJsonObject
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
-@SuppressLint("StaticFieldLeak")
 object Androidoscopy {
-    private var config: AndroidoscopyConfig? = null
-    private var context: Context? = null
-    private var webSocketClient: WebSocketClient? = null
-    private var sessionId: String? = null
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val reconnectionManager = ReconnectionManager()
-    private var isConnecting = false
+    private var androidoscopyImpl: AndroidoscopyImpl? = null
 
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    val connectionState: StateFlow<ConnectionState> = _connectionState
+    val connectionState get() = androidoscopyImpl?.connectionState ?: notInitializedError()
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    }
-
-    private val currentData = mutableMapOf<String, Any>()
-
-    fun init(context: Context, config: AndroidoscopyConfig.() -> Unit) {
+    fun init(context: Application, config: AndroidoscopyConfig.() -> Unit) {
         val configBuilder = AndroidoscopyConfig()
         configBuilder.config()
         configBuilder.validate()
 
-        this.config = configBuilder
-        this.context = context.applicationContext
-
-        if (configBuilder.autoConnect) {
-            connect()
-        }
-    }
-
-    fun connect() {
-        val cfg = config ?: return
-        if (isConnecting) return
-        isConnecting = true
-
-        scope.launch {
-            val hostIp = cfg.hostIp ?: findServiceHost()
-            if (hostIp == null) {
-                _connectionState.value = ConnectionState.Error("Could not find service host")
-                isConnecting = false
-                return@launch
+        if (androidoscopyImpl == null) {
+            androidoscopyImpl = AndroidoscopyImpl(context, configBuilder).apply {
+                connect()
             }
-
-            val url = "ws://$hostIp:${cfg.port}/ws/app"
-            webSocketClient = WebSocketClient(url)
-            webSocketClient?.connect()
-
-            webSocketClient?.events?.collect { event ->
-                handleWebSocketEvent(event)
-            }
+        } else {
+            notInitializedError()
         }
-    }
-
-    fun disconnect() {
-        webSocketClient?.disconnect()
-        webSocketClient = null
-        sessionId = null
-        _connectionState.value = ConnectionState.Disconnected
-    }
-
-    fun updateData(block: MutableMap<String, Any>.() -> Unit) {
-        currentData.block()
-        sendData()
     }
 
     fun log(level: LogLevel, tag: String?, message: String, throwable: Throwable? = null) {
-        val sid = sessionId ?: return
-        val cfg = config ?: return
-        if (!cfg.enableLogging) return
-
-        val truncatedMessage = message.take(MessageLimits.MAX_LOG_MESSAGE_SIZE)
-        val truncatedThrowable = throwable?.stackTraceToString()?.take(MessageLimits.MAX_LOG_THROWABLE_SIZE)
-
-        val logMessage = LogMessage(
-            timestamp = currentTimestamp(),
-            sessionId = sid,
-            payload = LogPayload(
-                level = level,
-                tag = tag,
-                message = truncatedMessage,
-                throwable = truncatedThrowable
-            )
-        )
-
-        send(json.encodeToString(logMessage))
+        androidoscopyImpl?.log(level, tag, message, throwable) ?: notInitializedError()
     }
 
-    private fun handleWebSocketEvent(event: WebSocketEvent) {
-        when (event) {
-            is WebSocketEvent.Connected -> {
-                _connectionState.value = ConnectionState.Connecting
-                reconnectionManager.reset()
-                sendRegister()
-            }
-            is WebSocketEvent.Message -> {
-                handleMessage(event.text)
-            }
-            is WebSocketEvent.Closed, is WebSocketEvent.Closing -> {
-                _connectionState.value = ConnectionState.Disconnected
-                isConnecting = false
-                scheduleReconnect()
-            }
-            is WebSocketEvent.Error -> {
-                _connectionState.value = ConnectionState.Error(event.throwable.message ?: "Unknown error")
-                isConnecting = false
-                scheduleReconnect()
-            }
+    fun updateData(block: MutableMap<String, Any>.() -> Unit) {
+        androidoscopyImpl?.updateData(block) ?: notInitializedError()
+    }
+
+    private fun notInitializedError(): Nothing = error("Androidoscopy was not initialized")
+
+    internal class AndroidoscopyImpl(
+        private val context: Application,
+        private val config: AndroidoscopyConfig,
+    ) {
+        private var webSocketClient: WebSocketClient? = null
+        private var sessionId: String? = null
+
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val reconnectionManager = ReconnectionManager()
+        private var isConnecting = false
+
+        private val _connectionState =
+            MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
+        val connectionState: StateFlow<ConnectionState> = _connectionState
+
+        private val json = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
         }
-    }
 
-    private fun handleMessage(text: String) {
-        try {
-            val message = json.decodeFromString<ServiceMessage>(text)
-            when (message) {
-                is RegisteredMessage -> {
-                    sessionId = message.payload.sessionId
-                    _connectionState.value = ConnectionState.Connected(message.payload.sessionId)
+        private val currentData = mutableMapOf<String, Any>()
+
+        fun connect() {
+            if (isConnecting) return
+            isConnecting = true
+
+            scope.launch {
+                val hostIp = config.hostIp ?: findServiceHost()
+                if (hostIp == null) {
+                    _connectionState.value = ConnectionState.Error("Could not find service host")
                     isConnecting = false
+                    return@launch
                 }
-                is ActionMessage -> {
-                    handleAction(message)
-                }
-                is com.lelloman.androidoscopy.protocol.ErrorMessage -> {
-                    // Handle error from server
+
+                val url = "ws://$hostIp:${config.port}/ws/app"
+                webSocketClient = WebSocketClient(url)
+                webSocketClient?.connect()
+
+                webSocketClient?.events?.collect { event ->
+                    handleWebSocketEvent(event)
                 }
             }
-        } catch (e: Exception) {
-            // Failed to parse message
         }
-    }
 
-    private fun handleAction(message: ActionMessage) {
-        val cfg = config ?: return
-        val handler = cfg.actionHandlers[message.payload.action] ?: return
+        fun disconnect() {
+            webSocketClient?.disconnect()
+            webSocketClient = null
+            sessionId = null
+            _connectionState.value = ConnectionState.Disconnected
+        }
 
-        scope.launch {
-            val result = try {
-                val args = message.payload.args?.let { parseArgs(it) } ?: emptyMap()
-                handler(args)
-            } catch (e: Exception) {
-                ActionResult.failure(e.message ?: "Unknown error")
-            }
+        fun updateData(block: MutableMap<String, Any>.() -> Unit) {
+            currentData.block()
+            sendData()
+        }
 
-            val resultMessage = ActionResultMessage(
+        fun log(level: LogLevel, tag: String?, message: String, throwable: Throwable? = null) {
+            val sid = sessionId ?: return
+            val cfg = config ?: return
+            if (!cfg.enableLogging) return
+
+            val truncatedMessage = message.take(MessageLimits.MAX_LOG_MESSAGE_SIZE)
+            val truncatedThrowable =
+                throwable?.stackTraceToString()?.take(MessageLimits.MAX_LOG_THROWABLE_SIZE)
+
+            val logMessage = LogMessage(
                 timestamp = currentTimestamp(),
-                sessionId = message.sessionId,
-                payload = ActionResultPayload(
-                    actionId = message.payload.actionId,
-                    success = result.success,
-                    message = result.message,
-                    data = result.data?.let { mapToJsonElement(it) }
+                sessionId = sid,
+                payload = LogPayload(
+                    level = level,
+                    tag = tag,
+                    message = truncatedMessage,
+                    throwable = truncatedThrowable
                 )
             )
 
-            send(json.encodeToString(resultMessage))
-        }
-    }
-
-    private fun sendRegister() {
-        val cfg = config ?: return
-        val ctx = context ?: return
-
-        val deviceInfo = collectDeviceInfo(ctx)
-        val packageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
-
-        val registerMessage = RegisterMessage(
-            timestamp = currentTimestamp(),
-            payload = RegisterPayload(
-                protocolVersion = "1.0",
-                appName = cfg.appName ?: ctx.packageName,
-                packageName = ctx.packageName,
-                versionName = packageInfo.versionName ?: "unknown",
-                device = deviceInfo,
-                dashboard = cfg.dashboardSchema ?: buildJsonObject { }
-            )
-        )
-
-        send(json.encodeToString(registerMessage))
-    }
-
-    private fun sendData() {
-        val sid = sessionId ?: return
-
-        val dataMessage = DataMessage(
-            timestamp = currentTimestamp(),
-            sessionId = sid,
-            payload = mapToJsonElement(currentData)
-        )
-
-        send(json.encodeToString(dataMessage))
-    }
-
-    private fun send(message: String): Boolean {
-        return webSocketClient?.send(message) ?: false
-    }
-
-    private fun scheduleReconnect() {
-        val cfg = config ?: return
-        if (!cfg.autoConnect) return
-
-        scope.launch {
-            val delay = reconnectionManager.nextDelay()
-            delay(delay)
-            connect()
-        }
-    }
-
-    private suspend fun findServiceHost(): String? {
-        // Try known emulator host IPs first
-        if (isEmulator()) {
-            val emulatorHosts = listOf(
-                "10.0.2.2",    // Android Emulator (AVD), BlueStacks
-                "10.0.3.2",    // Genymotion
-                "192.168.56.1" // Android-x86
-            )
-            for (host in emulatorHosts) {
-                if (canConnect(host)) return host
-            }
+            send(json.encodeToString(logMessage))
         }
 
-        // Try UDP discovery
-        val discoveryListener = DiscoveryListener()
-        val serviceInfo = discoveryListener.discoverService(timeoutMs = 5_000)
-        if (serviceInfo != null && serviceInfo.host.isNotEmpty()) {
-            return serviceInfo.host
-        }
-
-        return null
-    }
-
-    private suspend fun canConnect(host: String): Boolean {
-        // Simple TCP connection check
-        return try {
-            val socket = java.net.Socket()
-            socket.connect(java.net.InetSocketAddress(host, config?.port ?: 9999), 1000)
-            socket.close()
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    private fun collectDeviceInfo(context: Context): DeviceInfo {
-        val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-
-        return DeviceInfo(
-            deviceId = deviceId ?: "unknown",
-            manufacturer = Build.MANUFACTURER,
-            model = Build.MODEL,
-            androidVersion = Build.VERSION.RELEASE,
-            apiLevel = Build.VERSION.SDK_INT,
-            isEmulator = isEmulator()
-        )
-    }
-
-    private fun isEmulator(): Boolean {
-        return Build.FINGERPRINT.contains("generic") ||
-            Build.FINGERPRINT.contains("emulator") ||
-            Build.MODEL.contains("Emulator") ||
-            Build.MODEL.contains("Android SDK built for") ||
-            Build.MANUFACTURER.contains("Genymotion") ||
-            Build.BRAND.startsWith("generic") ||
-            Build.DEVICE.startsWith("generic") ||
-            Build.PRODUCT == "google_sdk" ||
-            Build.PRODUCT == "sdk" ||
-            Build.PRODUCT == "sdk_x86" ||
-            Build.PRODUCT == "sdk_gphone64_arm64" ||
-            Build.HARDWARE.contains("goldfish") ||
-            Build.HARDWARE.contains("ranchu")
-    }
-
-    private fun currentTimestamp(): String {
-        return DateTimeFormatter.ISO_INSTANT.format(Instant.now())
-    }
-
-    private fun parseArgs(json: JsonElement): Map<String, Any> {
-        if (json !is JsonObject) return emptyMap()
-        return json.mapValues { (_, value) ->
-            when (value) {
-                is JsonPrimitive -> when {
-                    value.isString -> value.content
-                    else -> value.content
+        private fun handleWebSocketEvent(event: WebSocketEvent) {
+            when (event) {
+                is WebSocketEvent.Connected -> {
+                    _connectionState.value = ConnectionState.Connecting
+                    reconnectionManager.reset()
+                    sendRegister()
                 }
-                else -> value.toString()
+
+                is WebSocketEvent.Message -> {
+                    handleMessage(event.text)
+                }
+
+                is WebSocketEvent.Closed, is WebSocketEvent.Closing -> {
+                    _connectionState.value = ConnectionState.Disconnected
+                    isConnecting = false
+                    scheduleReconnect()
+                }
+
+                is WebSocketEvent.Error -> {
+                    _connectionState.value =
+                        ConnectionState.Error(event.throwable.message ?: "Unknown error")
+                    isConnecting = false
+                    scheduleReconnect()
+                }
             }
         }
-    }
 
-    private fun mapToJsonElement(map: Map<String, Any>): JsonElement {
-        return buildJsonObject {
-            map.forEach { (key, value) ->
-                put(key, valueToJsonElement(value))
+        private fun handleMessage(text: String) {
+            try {
+                val message = json.decodeFromString<ServiceMessage>(text)
+                when (message) {
+                    is RegisteredMessage -> {
+                        sessionId = message.payload.sessionId
+                        _connectionState.value =
+                            ConnectionState.Connected(message.payload.sessionId)
+                        isConnecting = false
+                    }
+
+                    is ActionMessage -> {
+                        handleAction(message)
+                    }
+
+                    is com.lelloman.androidoscopy.protocol.ErrorMessage -> {
+                        // Handle error from server
+                    }
+                }
+            } catch (e: Exception) {
+                // Failed to parse message
             }
         }
-    }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun valueToJsonElement(value: Any): JsonElement {
-        return when (value) {
-            is String -> JsonPrimitive(value)
-            is Number -> JsonPrimitive(value)
-            is Boolean -> JsonPrimitive(value)
-            is Map<*, *> -> mapToJsonElement(value as Map<String, Any>)
-            is List<*> -> kotlinx.serialization.json.JsonArray(value.map { valueToJsonElement(it ?: "") })
-            else -> JsonPrimitive(value.toString())
+        private fun handleAction(message: ActionMessage) {
+            val handler = config.actionHandlers[message.payload.action] ?: return
+
+            scope.launch {
+                val result = try {
+                    val args = message.payload.args?.let { parseArgs(it) } ?: emptyMap()
+                    handler(args)
+                } catch (e: Exception) {
+                    ActionResult.failure(e.message ?: "Unknown error")
+                }
+
+                val resultMessage = ActionResultMessage(
+                    timestamp = currentTimestamp(),
+                    sessionId = message.sessionId,
+                    payload = ActionResultPayload(
+                        actionId = message.payload.actionId,
+                        success = result.success,
+                        message = result.message,
+                        data = result.data?.let { mapToJsonElement(it) }
+                    )
+                )
+
+                send(json.encodeToString(resultMessage))
+            }
+        }
+
+        private fun sendRegister() {
+            val cfg = config ?: return
+            val ctx = context ?: return
+
+            val deviceInfo = collectDeviceInfo(ctx)
+            val packageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+
+            val registerMessage = RegisterMessage(
+                timestamp = currentTimestamp(),
+                payload = RegisterPayload(
+                    protocolVersion = "1.0",
+                    appName = cfg.appName ?: ctx.packageName,
+                    packageName = ctx.packageName,
+                    versionName = packageInfo.versionName ?: "unknown",
+                    device = deviceInfo,
+                    dashboard = cfg.dashboardSchema ?: buildJsonObject { }
+                )
+            )
+
+            send(json.encodeToString(registerMessage))
+        }
+
+        private fun sendData() {
+            val sid = sessionId ?: return
+
+            val dataMessage = DataMessage(
+                timestamp = currentTimestamp(),
+                sessionId = sid,
+                payload = mapToJsonElement(currentData)
+            )
+
+            send(json.encodeToString(dataMessage))
+        }
+
+        private fun send(message: String): Boolean {
+            return webSocketClient?.send(message) ?: false
+        }
+
+        private fun scheduleReconnect() {
+            scope.launch {
+                val delay = reconnectionManager.nextDelay()
+                delay(delay)
+                connect()
+            }
+        }
+
+        private suspend fun findServiceHost(): String? {
+            // Try known emulator host IPs first
+            if (isEmulator()) {
+                val emulatorHosts = listOf(
+                    "10.0.2.2",    // Android Emulator (AVD), BlueStacks
+                    "10.0.3.2",    // Genymotion
+                    "192.168.56.1" // Android-x86
+                )
+                for (host in emulatorHosts) {
+                    if (canConnect(host)) return host
+                }
+            }
+
+            // Try UDP discovery
+            val discoveryListener = DiscoveryListener()
+            val serviceInfo = discoveryListener.discoverService(timeoutMs = 5_000)
+            if (serviceInfo != null && serviceInfo.host.isNotEmpty()) {
+                return serviceInfo.host
+            }
+
+            return null
+        }
+
+        private suspend fun canConnect(host: String): Boolean {
+            // Simple TCP connection check
+            return try {
+                val socket = java.net.Socket()
+                socket.connect(java.net.InetSocketAddress(host, config?.port ?: 9999), 1000)
+                socket.close()
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        private fun collectDeviceInfo(context: Context): DeviceInfo {
+            val deviceId =
+                Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+
+            return DeviceInfo(
+                deviceId = deviceId ?: "unknown",
+                manufacturer = Build.MANUFACTURER,
+                model = Build.MODEL,
+                androidVersion = Build.VERSION.RELEASE,
+                apiLevel = Build.VERSION.SDK_INT,
+                isEmulator = isEmulator()
+            )
+        }
+
+        private fun isEmulator(): Boolean {
+            return Build.FINGERPRINT.contains("generic") ||
+                    Build.FINGERPRINT.contains("emulator") ||
+                    Build.MODEL.contains("Emulator") ||
+                    Build.MODEL.contains("Android SDK built for") ||
+                    Build.MANUFACTURER.contains("Genymotion") ||
+                    Build.BRAND.startsWith("generic") ||
+                    Build.DEVICE.startsWith("generic") ||
+                    Build.PRODUCT == "google_sdk" ||
+                    Build.PRODUCT == "sdk" ||
+                    Build.PRODUCT == "sdk_x86" ||
+                    Build.PRODUCT == "sdk_gphone64_arm64" ||
+                    Build.HARDWARE.contains("goldfish") ||
+                    Build.HARDWARE.contains("ranchu")
+        }
+
+        private fun currentTimestamp(): String {
+            return DateTimeFormatter.ISO_INSTANT.format(Instant.now())
+        }
+
+        private fun parseArgs(json: JsonElement): Map<String, Any> {
+            if (json !is JsonObject) return emptyMap()
+            return json.mapValues { (_, value) ->
+                when (value) {
+                    is JsonPrimitive -> when {
+                        value.isString -> value.content
+                        else -> value.content
+                    }
+
+                    else -> value.toString()
+                }
+            }
+        }
+
+        private fun mapToJsonElement(map: Map<String, Any>): JsonElement {
+            return buildJsonObject {
+                map.forEach { (key, value) ->
+                    put(key, valueToJsonElement(value))
+                }
+            }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private fun valueToJsonElement(value: Any): JsonElement {
+            return when (value) {
+                is String -> JsonPrimitive(value)
+                is Number -> JsonPrimitive(value)
+                is Boolean -> JsonPrimitive(value)
+                is Map<*, *> -> mapToJsonElement(value as Map<String, Any>)
+                is List<*> -> kotlinx.serialization.json.JsonArray(value.map {
+                    valueToJsonElement(
+                        it ?: ""
+                    )
+                })
+
+                else -> JsonPrimitive(value.toString())
+            }
         }
     }
 }

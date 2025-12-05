@@ -21,7 +21,6 @@ class SampleApplication : Application() {
 
         Androidoscopy.init(this) {
             appName = "Androidoscopy Sample"
-            autoConnect = true
 
             dashboard {
                 memorySection()
