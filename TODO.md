@@ -1260,7 +1260,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.10 E2E Tests
 
-- [ ] **Set up Playwright**
+- [x] **Set up Playwright**
   ```typescript
   // playwright.config.ts
   export default {
