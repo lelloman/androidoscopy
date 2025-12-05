@@ -1,0 +1,8 @@
+com.lelloman.androidoscopy.sdk-pngs-0 /home/lelloman/androidoscopy/android/sdk/build/generated/res/pngs/release
+com.lelloman.androidoscopy.sdk-resValues-1 /home/lelloman/androidoscopy/android/sdk/build/generated/res/resValues/release
+com.lelloman.androidoscopy.sdk-updated_navigation_xml-2 /home/lelloman/androidoscopy/android/sdk/build/generated/updated_navigation_xml/release
+com.lelloman.androidoscopy.sdk-mergeReleaseResources-3 /home/lelloman/androidoscopy/android/sdk/build/intermediates/incremental/release/mergeReleaseResources/merged.dir
+com.lelloman.androidoscopy.sdk-mergeReleaseResources-4 /home/lelloman/androidoscopy/android/sdk/build/intermediates/incremental/release/mergeReleaseResources/stripped.dir
+com.lelloman.androidoscopy.sdk-release-5 /home/lelloman/androidoscopy/android/sdk/build/intermediates/merged_res/release/mergeReleaseResources
+com.lelloman.androidoscopy.sdk-main-6 /home/lelloman/androidoscopy/android/sdk/src/main/res
+com.lelloman.androidoscopy.sdk-release-7 /home/lelloman/androidoscopy/android/sdk/src/release/res

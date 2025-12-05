@@ -17,7 +17,9 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   ```
   androidoscopy/
   ├── server/           # Rust service
-  ├── sdk/              # Android SDK (Kotlin)
+  ├── android/          # Android project
+  │   ├── app/          # Demo app
+  │   └── sdk/          # SDK library module
   ├── dashboard/        # Svelte web app
   ├── e2e/              # End-to-end tests
   ├── DESIGN.md
@@ -38,10 +40,10 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   - `tracing` - Logging
   - `toml` - Config parsing
 
-- [ ] **Initialize Android SDK project**
+- [x] **Initialize Android SDK project**
   ```bash
-  cd sdk
-  # Create Android library module
+  cd android
+  # Created via Android Studio, SDK is in android/sdk module
   ```
   - Kotlin library module
   - Min SDK 24 (Android 7.0)
