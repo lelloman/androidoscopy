@@ -85,7 +85,7 @@ Androidoscopy.updateData {
     ))
 }
 
-// Log messages (integrates with Timber)
+// Log messages
 Androidoscopy.log(LogLevel.INFO, "NetworkClient", "Request completed")
 ```
 

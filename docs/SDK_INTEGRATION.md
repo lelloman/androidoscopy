@@ -278,33 +278,29 @@ Androidoscopy.init(this) {
 
 ## Step 6: Integrate Logging
 
-### Option A: Use the Timber Tree
-
-If you use Timber for logging:
-
-```kotlin
-class MyApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-
-        if (BuildConfig.DEBUG) {
-            Androidoscopy.init(this) { /* ... */ }
-            Timber.plant(AndroidoscopyTree())
-        }
-    }
-}
-```
-
-Now all Timber logs will appear in the dashboard.
-
-### Option B: Direct Logging
-
 ```kotlin
 // Log directly
 Androidoscopy.log(LogLevel.INFO, "MyTag", "Something happened")
 Androidoscopy.log(LogLevel.ERROR, "NetworkClient", "Request failed", exception)
 
 // Log levels: VERBOSE, DEBUG, INFO, WARN, ERROR
+```
+
+If you use Timber, you can create a custom tree that forwards to Androidoscopy:
+
+```kotlin
+class AndroidoscopyTree : Timber.Tree() {
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+        val level = when (priority) {
+            Log.VERBOSE -> LogLevel.VERBOSE
+            Log.DEBUG -> LogLevel.DEBUG
+            Log.INFO -> LogLevel.INFO
+            Log.WARN -> LogLevel.WARN
+            else -> LogLevel.ERROR
+        }
+        Androidoscopy.log(level, tag, message, t)
+    }
+}
 ```
 
 ## Connection States

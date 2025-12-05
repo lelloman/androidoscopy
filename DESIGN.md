@@ -1033,21 +1033,14 @@ Androidoscopy.updateData {
 
 ### Logging Integration
 
-```kotlin
-// Timber integration
-class AndroidoscopyTree : Timber.Tree() {
-    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-        Androidoscopy.log(
-            level = priority.toLogLevel(),
-            tag = tag,
-            message = message,
-            throwable = t
-        )
-    }
-}
+The SDK provides a direct logging API:
 
-Timber.plant(AndroidoscopyTree())
+```kotlin
+Androidoscopy.log(LogLevel.INFO, "MyTag", "Something happened")
+Androidoscopy.log(LogLevel.ERROR, "NetworkClient", "Request failed", exception)
 ```
+
+Users who want Timber integration can create their own tree wrapping this API.
 
 ---
 

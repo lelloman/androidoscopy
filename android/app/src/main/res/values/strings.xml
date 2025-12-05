@@ -6,4 +6,5 @@
     <string name="connection_status_error">Status: Error - %s</string>
     <string name="click_count_format">Clicks: %d</string>
     <string name="click_me">Click Me!</string>
+    <string name="log_me">Log Me!</string>
 </resources>
