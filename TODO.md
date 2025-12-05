@@ -231,7 +231,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 2.4 WebSocket Handling
 
-- [ ] **Implement app WebSocket handler**
+- [x] **Implement app WebSocket handler**
   ```rust
   async fn handle_app_ws(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
       ws.on_upgrade(|socket| handle_app_connection(socket, state))
@@ -245,7 +245,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement dashboard WebSocket handler**
+- [x] **Implement dashboard WebSocket handler**
   ```rust
   async fn handle_dashboard_ws(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
       ws.on_upgrade(|socket| handle_dashboard_connection(socket, state))
@@ -258,13 +258,13 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement message routing**
+- [x] **Implement message routing**
 
   Route messages between apps and dashboards:
   - App DATA/LOG → broadcast to all connected dashboards
   - Dashboard ACTION → route to specific app by session_id
 
-- [ ] **Handle connection errors gracefully**
+- [x] **Handle connection errors gracefully**
 
   Log disconnections, clean up resources, don't crash on malformed messages.
 

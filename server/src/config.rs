@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     #[serde(default)]
     pub server: ServerConfig,
@@ -14,7 +14,7 @@ pub struct Config {
     pub dashboard: DashboardConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
     #[serde(default = "default_websocket_port")]
     pub websocket_port: u16,
@@ -26,7 +26,7 @@ pub struct ServerConfig {
     pub max_connections: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct SessionConfig {
     #[serde(default = "default_ended_session_ttl")]
     pub ended_session_ttl_seconds: u64,
@@ -36,13 +36,13 @@ pub struct SessionConfig {
     pub log_buffer_size: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct LoggingConfig {
     #[serde(default = "default_log_level")]
     pub level: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct DashboardConfig {
     #[serde(default = "default_static_dir")]
     pub static_dir: String,
