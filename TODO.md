@@ -1214,7 +1214,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.9 Main App Layout
 
-- [ ] **Implement App.svelte**
+- [x] **Implement App.svelte**
   ```svelte
   <!-- src/App.svelte -->
   <script lang="ts">
@@ -1250,11 +1250,11 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </main>
   ```
 
-- [ ] **Implement SessionCard component**
+- [x] **Implement SessionCard component**
 
   Display session info and render dashboard sections.
 
-- [ ] **Add basic styling**
+- [x] **Add basic styling**
 
   Clean, minimal design with dark/light mode support.
 
