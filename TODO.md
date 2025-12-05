@@ -268,7 +268,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   Log disconnections, clean up resources, don't crash on malformed messages.
 
-- [ ] **Write integration tests for WebSocket handling**
+- [x] **Write integration tests for WebSocket handling**
 
   Use `tokio-tungstenite` as test client. Test:
   - App connection and registration
