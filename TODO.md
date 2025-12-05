@@ -1275,7 +1275,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   };
   ```
 
-- [ ] **Write E2E tests**
+- [x] **Write E2E tests**
   - Session list displays connected apps
   - Widgets render with correct data
   - Actions trigger and show results
