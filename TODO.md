@@ -805,7 +805,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Write unit tests for JSONPath evaluation**
+- [x] **Write unit tests for JSONPath evaluation**
 
   Test direct paths, array access, nested objects.
 
