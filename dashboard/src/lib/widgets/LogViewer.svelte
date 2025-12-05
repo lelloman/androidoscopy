@@ -1,18 +1,17 @@
 <script lang="ts">
-    import type { LogEntry } from '../types/protocol';
+    import type { LogEntry, LogLevel } from '../types/protocol';
     import { formatTime } from '../format';
     import { tick } from 'svelte';
+    import { filterLogs, isAtBottom, LOG_LEVELS } from './logViewerLogic';
 
     interface Props {
         logs: LogEntry[];
-        defaultLevel?: string;
+        defaultLevel?: LogLevel;
     }
 
     let { logs, defaultLevel = 'DEBUG' }: Props = $props();
 
-    const LOG_LEVELS = ['VERBOSE', 'DEBUG', 'INFO', 'WARN', 'ERROR'];
-
-    let levelFilter = $state(defaultLevel);
+    let levelFilter = $state<LogLevel>(defaultLevel);
     let tagFilter = $state('');
     let searchFilter = $state('');
     let autoScroll = $state(true);
@@ -20,27 +19,12 @@
     let expandedEntries = $state(new Set<number>());
 
     let filteredLogs = $derived(
-        logs.filter(log => {
-            const levelIdx = LOG_LEVELS.indexOf(log.level);
-            const filterIdx = LOG_LEVELS.indexOf(levelFilter);
-            if (levelIdx < filterIdx) return false;
-
-            if (tagFilter && !log.tag?.toLowerCase().includes(tagFilter.toLowerCase())) {
-                return false;
-            }
-
-            if (searchFilter && !log.message.toLowerCase().includes(searchFilter.toLowerCase())) {
-                return false;
-            }
-
-            return true;
-        })
+        filterLogs(logs, { levelFilter, tagFilter, searchFilter })
     );
 
     function handleScroll() {
         if (container) {
-            const atBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
-            autoScroll = atBottom;
+            autoScroll = isAtBottom(container.scrollHeight, container.scrollTop, container.clientHeight);
         }
     }
 

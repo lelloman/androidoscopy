@@ -158,9 +158,11 @@ export interface ResultDisplay {
     type: 'toast' | 'inline' | 'none';
 }
 
+export type LogLevel = 'VERBOSE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+
 export interface LogViewerWidget extends BaseWidget {
     type: 'log_viewer';
-    default_level?: string;
+    default_level?: LogLevel;
 }
 
 export interface VisibleWhen {

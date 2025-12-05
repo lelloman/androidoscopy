@@ -1048,7 +1048,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   </div>
   ```
 
-- [ ] **Write component tests for LogViewer**
+- [x] **Write component tests for LogViewer**
 
 ### 4.6 Layout System
 
