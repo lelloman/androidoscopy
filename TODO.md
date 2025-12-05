@@ -1333,7 +1333,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 6.2 Polish
 
-- [ ] **Add error boundaries to dashboard**
+- [x] **Add error boundaries to dashboard**
 
 - [ ] **Handle edge cases in all components**
 

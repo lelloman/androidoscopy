@@ -10,6 +10,7 @@
     } from './lib/stores/connection';
     import SessionCard from './lib/SessionCard.svelte';
     import ToastContainer from './lib/ToastContainer.svelte';
+    import ErrorBoundary from './lib/ErrorBoundary.svelte';
 
     onMount(() => {
         connect();
@@ -58,7 +59,11 @@
             </div>
         {:else}
             {#each $sessionList as session (session.session_id)}
-                <SessionCard {session} />
+                <ErrorBoundary>
+                    {#snippet children()}
+                        <SessionCard {session} />
+                    {/snippet}
+                </ErrorBoundary>
             {/each}
         {/if}
     </div>
