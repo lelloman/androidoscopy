@@ -1300,7 +1300,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   │   └── action_test.rs
   ```
 
-- [ ] **Implement mock app client in Rust**
+- [x] **Implement mock app client in Rust**
 
   Simulates SDK behavior for testing server + dashboard without real Android.
 
