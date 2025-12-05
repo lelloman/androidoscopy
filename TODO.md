@@ -324,7 +324,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 3.1 Core Infrastructure
 
-- [ ] **Create library module structure**
+- [x] **Create library module structure**
   ```
   sdk/
   ├── src/main/kotlin/com/lelloman/androidoscopy/
@@ -344,7 +344,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   │       └── DataProvider.kt
   ```
 
-- [ ] **Implement main Androidoscopy entry point**
+- [x] **Implement main Androidoscopy entry point**
   ```kotlin
   object Androidoscopy {
       fun init(context: Context, config: AndroidoscopyConfig.() -> Unit)
@@ -354,7 +354,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement configuration DSL**
+- [x] **Implement configuration DSL**
   ```kotlin
   class AndroidoscopyConfig {
       var appName: String? = null
@@ -371,7 +371,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 3.2 Connection Management
 
-- [ ] **Implement WebSocket client using OkHttp**
+- [x] **Implement WebSocket client using OkHttp**
   ```kotlin
   class WebSocketClient(
       private val url: String,
@@ -385,7 +385,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement emulator detection**
+- [x] **Implement emulator detection**
   ```kotlin
   fun isEmulator(): Boolean {
       return Build.FINGERPRINT.contains("generic") ||
@@ -395,7 +395,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement emulator IP resolution**
+- [x] **Implement emulator IP resolution**
   ```kotlin
   private val KNOWN_EMULATOR_HOST_IPS = listOf(
       "10.0.2.2",    // Android Emulator (AVD), BlueStacks
@@ -431,7 +431,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement ReconnectionManager with exponential backoff**
+- [x] **Implement ReconnectionManager with exponential backoff**
   ```kotlin
   class ReconnectionManager(
       private val initialDelay: Duration = 1.seconds,
@@ -445,7 +445,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement connection lifecycle management**
+- [x] **Implement connection lifecycle management**
 
   Handle app lifecycle (start connection on init, reconnect on network change).
 
@@ -459,7 +459,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 3.3 Dashboard DSL
 
-- [ ] **Implement DashboardBuilder**
+- [x] **Implement DashboardBuilder**
   ```kotlin
   class DashboardBuilder {
       private val sections = mutableListOf<Section>()
@@ -473,7 +473,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement SectionBuilder**
+- [x] **Implement SectionBuilder**
   ```kotlin
   class SectionBuilder(private val title: String) {
       var layout: Layout = Layout.ROW
@@ -486,7 +486,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement RowBuilder with widget methods**
+- [x] **Implement RowBuilder with widget methods**
   ```kotlin
   class RowBuilder {
       fun number(label: String, dataPath: String, format: Format = Format.NUMBER)
@@ -498,7 +498,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement TableBuilder**
+- [x] **Implement TableBuilder**
   ```kotlin
   class TableBuilder(private val dataPath: String) {
       fun column(key: String, label: String, format: Format = Format.TEXT)
@@ -506,7 +506,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement ActionsBuilder with dialog support**
+- [x] **Implement ActionsBuilder with dialog support**
   ```kotlin
   class ActionsBuilder {
       fun button(
@@ -533,7 +533,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement built-in templates**
+- [x] **Implement built-in templates**
   ```kotlin
   // In DashboardBuilder
   fun memorySection() {
@@ -601,7 +601,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 3.5 Action Handling
 
-- [ ] **Implement action handler registration**
+- [x] **Implement action handler registration**
   ```kotlin
   typealias ActionHandler = suspend (args: Map<String, Any>) -> ActionResult
 
@@ -619,7 +619,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement action dispatch on receiving ACTION message**
+- [x] **Implement action dispatch on receiving ACTION message**
   ```kotlin
   private suspend fun handleAction(action: ActionPayload) {
       val handler = actionHandlers[action.action]
@@ -641,7 +641,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 3.6 Logging Integration
 
-- [ ] **Implement Androidoscopy.log()**
+- [x] **Implement Androidoscopy.log()**
   ```kotlin
   fun log(level: LogLevel, tag: String?, message: String, throwable: Throwable? = null) {
       val logMessage = LogMessage(
@@ -667,7 +667,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 3.7 Protocol Implementation
 
-- [ ] **Define message data classes**
+- [x] **Define message data classes**
   ```kotlin
   @Serializable
   sealed class AppMessage {
@@ -685,9 +685,9 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   // ... other message types
   ```
 
-- [ ] **Implement JSON serialization with kotlinx.serialization**
+- [x] **Implement JSON serialization with kotlinx.serialization**
 
-- [ ] **Implement device info collection**
+- [x] **Implement device info collection**
   ```kotlin
   fun collectDeviceInfo(context: Context): DeviceInfo {
       return DeviceInfo(
@@ -1350,8 +1350,8 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 | Phase | Tasks | Status |
 |-------|-------|--------|
 | 1. Project Setup | 8 | Completed |
-| 2. Server | 22 | In progress |
-| 3. SDK | 28 | Not started |
+| 2. Server | 22 | Completed |
+| 3. SDK | 28 | In progress |
 | 4. Dashboard | 32 | Not started |
 | 5. Integration | 5 | Not started |
 | 6. Documentation | 6 | Not started |
