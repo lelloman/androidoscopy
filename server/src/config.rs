@@ -24,6 +24,8 @@ pub struct ServerConfig {
     pub bind_address: String,
     #[serde(default = "default_max_connections")]
     pub max_connections: usize,
+    #[serde(default = "default_udp_discovery")]
+    pub udp_discovery_enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -64,6 +66,10 @@ fn default_max_connections() -> usize {
     100
 }
 
+fn default_udp_discovery() -> bool {
+    true
+}
+
 fn default_ended_session_ttl() -> u64 {
     3600
 }
@@ -102,6 +108,7 @@ impl Default for ServerConfig {
             http_port: default_http_port(),
             bind_address: default_bind_address(),
             max_connections: default_max_connections(),
+            udp_discovery_enabled: default_udp_discovery(),
         }
     }
 }

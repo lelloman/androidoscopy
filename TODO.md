@@ -278,7 +278,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 2.5 UDP Discovery
 
-- [ ] **Implement UDP broadcast sender**
+- [x] **Implement UDP broadcast sender**
   ```rust
   async fn broadcast_presence(config: &Config) {
       let socket = UdpSocket::bind("0.0.0.0:0").await?;
@@ -298,7 +298,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Add config option to enable/disable UDP broadcast**
+- [x] **Add config option to enable/disable UDP broadcast**
 
   Some networks block broadcast; make it optional.
 
@@ -308,13 +308,13 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 2.6 Static File Serving
 
-- [ ] **Serve dashboard static files**
+- [x] **Serve dashboard static files**
   ```rust
   // Serve from ./dashboard/dist or configured path
   .nest_service("/", ServeDir::new(&config.dashboard.static_dir))
   ```
 
-- [ ] **Add fallback for SPA routing**
+- [x] **Add fallback for SPA routing**
 
   Return index.html for non-file routes (for client-side routing).
 
@@ -1350,7 +1350,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 | Phase | Tasks | Status |
 |-------|-------|--------|
 | 1. Project Setup | 8 | Completed |
-| 2. Server | 22 | Not started |
+| 2. Server | 22 | In progress |
 | 3. SDK | 28 | Not started |
 | 4. Dashboard | 32 | Not started |
 | 5. Integration | 5 | Not started |
