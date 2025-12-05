@@ -453,7 +453,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   Test emulator detection, IP resolution, backoff calculation.
 
-- [ ] **Write integration tests with MockWebServer**
+- [x] **Write integration tests with MockWebServer**
 
   Test full connection flow, registration, message exchange.
 
