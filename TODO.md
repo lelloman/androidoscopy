@@ -1329,7 +1329,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
   How to create custom sections and widgets.
 
-- [ ] **Add inline code documentation**
+- [x] **Add inline code documentation**
 
 ### 6.2 Polish
 

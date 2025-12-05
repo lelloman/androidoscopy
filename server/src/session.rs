@@ -1,3 +1,11 @@
+//! Session management for connected apps and dashboards.
+//!
+//! This module handles:
+//! - Creating and tracking app sessions
+//! - Buffering recent data and logs for late-joining dashboards
+//! - Managing dashboard connections
+//! - Routing messages between apps and dashboards
+
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
@@ -11,6 +19,7 @@ use crate::protocol::{
 
 // === Ring Buffer ===
 
+/// A fixed-capacity ring buffer that drops oldest items when full.
 #[derive(Debug, Clone)]
 pub struct RingBuffer<T> {
     items: VecDeque<T>,

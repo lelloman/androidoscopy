@@ -1,9 +1,40 @@
+//! Protocol definitions for Androidoscopy WebSocket communication.
+//!
+//! This module defines the JSON message types exchanged between:
+//! - Android apps and the service (via `/ws/app`)
+//! - Web dashboards and the service (via `/ws/dashboard`)
+//!
+//! # Message Flow
+//!
+//! ```text
+//! App → Service:
+//!   REGISTER → REGISTERED (response)
+//!   DATA → (forwarded to dashboards as SESSION_DATA)
+//!   LOG → (forwarded to dashboards as SESSION_LOG)
+//!   ACTION_RESULT → (forwarded to dashboards)
+//!
+//! Service → App:
+//!   REGISTERED (in response to REGISTER)
+//!   ACTION (forwarded from dashboard)
+//!   ERROR (on protocol errors)
+//!
+//! Dashboard ↔ Service:
+//!   ← SYNC (on connect, lists active sessions)
+//!   ← SESSION_STARTED (when app registers)
+//!   ← SESSION_DATA (when app sends data)
+//!   ← SESSION_LOG (when app sends log)
+//!   ← SESSION_ENDED (when app disconnects)
+//!   → ACTION (sent to specific session)
+//!   ← ACTION_RESULT (response from app)
+//! ```
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 // === App → Service Messages ===
 
+/// Messages sent from Android apps to the service.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum AppMessage {

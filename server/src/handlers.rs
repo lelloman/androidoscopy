@@ -1,3 +1,26 @@
+//! WebSocket handlers for app and dashboard connections.
+//!
+//! # Endpoints
+//!
+//! - `/ws/app` - Android app connections (handled by [`handle_app_ws`])
+//! - `/ws/dashboard` - Web dashboard connections (handled by [`handle_dashboard_ws`])
+//!
+//! # Connection Lifecycle
+//!
+//! ## App Connection (`/ws/app`)
+//! 1. Client connects
+//! 2. Client sends REGISTER message
+//! 3. Server responds with REGISTERED (includes session_id)
+//! 4. Server notifies dashboards with SESSION_STARTED
+//! 5. Client can now send DATA/LOG messages
+//! 6. On disconnect, server sends SESSION_ENDED to dashboards
+//!
+//! ## Dashboard Connection (`/ws/dashboard`)
+//! 1. Client connects
+//! 2. Server immediately sends SYNC with all active sessions
+//! 3. Server forwards SESSION_DATA/SESSION_LOG from apps
+//! 4. Client can send ACTION messages to specific sessions
+
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -16,6 +39,7 @@ use crate::protocol::{
 };
 use crate::state::AppState;
 
+/// Handles WebSocket upgrade for app connections.
 pub async fn handle_app_ws(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
