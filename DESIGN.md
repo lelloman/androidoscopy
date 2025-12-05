@@ -1,8 +1,8 @@
 # Androidoscopy - Design Document
 
-**Version:** 0.1.0-draft
+**Version:** 0.2.0-draft
 **Status:** Brainstorming Phase
-**Last Updated:** 2025-12-04
+**Last Updated:** 2025-12-05
 
 ---
 
@@ -15,7 +15,7 @@
 1. **Zero Configuration** - Once installed, it just works
 2. **Always Available** - Runs as background service, available whenever you need it
 3. **Multi-Device** - Handle multiple emulators and physical devices simultaneously
-4. **Extensible** - Easy to add new debug data types and visualizations
+4. **App-Driven UI** - Apps define their own dashboard layout; server is generic
 5. **Language Agnostic** - While we start with Android/Kotlin, protocol should work for any platform
 6. **Privacy First** - Debug data stays on localhost, never leaves your machine
 
@@ -33,12 +33,11 @@
 2. **Single Device Limitation**
    - Traditional approach: one HTTP server per app
    - Can't easily compare metrics across devices
-   - Can't see historical data after app closes
+   - Can't see data after app closes
 
 3. **Limited Visibility**
    - Debug UI dies when app crashes/closes
    - Can't see what happened before crash
-   - No aggregated view across multiple runs
 
 4. **Reinventing the Wheel**
    - Every app builds its own debug HTTP server
@@ -49,10 +48,9 @@
 
 - **One-time setup**: Install service once, use forever
 - **Auto-connection**: Apps automatically connect on startup
-- **Persistent dashboard**: View data even after app closes
+- **Persistent dashboard**: View data even after app closes (session history)
 - **Multi-device**: See all devices/emulators in one place
-- **Extensible SDK**: Drop-in library for any Android app
-- **Cross-session history**: Track trends over time
+- **Extensible SDK**: Drop-in library with customizable dashboard
 
 ---
 
@@ -61,35 +59,29 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Developer's Machine                      │
-│                                                               │
+│                                                              │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │         Androidoscopy Service (Rust)                   │ │
-│  │                                                          │ │
-│  │  ┌──────────────────┐         ┌────────────────────┐  │ │
-│  │  │  WebSocket Server│         │   HTTP Server      │  │ │
-│  │  │    (port 9999)   │         │   (port 8080)      │  │ │
-│  │  │                  │         │                    │  │ │
-│  │  │  - Accept app    │         │  - Serve dashboard │  │ │
-│  │  │    connections   │         │  - REST API        │  │ │
-│  │  │  - Protocol      │         │  - WebSocket for   │  │ │
-│  │  │    handling      │         │    live updates    │  │ │
-│  │  └──────────────────┘         └────────────────────┘  │ │
-│  │           │                              ▲             │ │
-│  │           ▼                              │             │ │
-│  │  ┌──────────────────────────────────────────────────┐ │ │
-│  │  │          Session Manager                         │ │ │
-│  │  │  - Track connected apps                          │ │ │
-│  │  │  - Route messages                                │ │ │
-│  │  │  - Maintain state                                │ │ │
-│  │  └──────────────────────────────────────────────────┘ │ │
-│  │           │                                            │ │
-│  │           ▼                                            │ │
-│  │  ┌──────────────────────────────────────────────────┐ │ │
-│  │  │          Data Store (Optional SQLite)            │ │ │
-│  │  │  - Session history                               │ │ │
-│  │  │  - Metrics over time                             │ │ │
-│  │  │  - Logs                                           │ │ │
-│  │  └──────────────────────────────────────────────────┘ │ │
+│  │         Androidoscopy Service (Rust + Axum)            │ │
+│  │                                                         │ │
+│  │  ┌──────────────────┐         ┌────────────────────┐   │ │
+│  │  │  WebSocket Hub   │         │   HTTP Server      │   │ │
+│  │  │    (port 9999)   │         │   (port 8080)      │   │ │
+│  │  │                  │         │                    │   │ │
+│  │  │  - App conns     │         │  - Serve dashboard │   │ │
+│  │  │  - Dashboard conn│         │    static files    │   │ │
+│  │  │  - Message relay │         │                    │   │ │
+│  │  └──────────────────┘         └────────────────────┘   │ │
+│  │           │                                             │ │
+│  │           ▼                                             │ │
+│  │  ┌──────────────────────────────────────────────────┐  │ │
+│  │  │          Session Manager (in-memory)              │  │ │
+│  │  │  - Track connected apps                           │  │ │
+│  │  │  - Store UI schemas per session                   │  │ │
+│  │  │  - Route messages: app ↔ dashboard                │  │ │
+│  │  │  - Buffer recent data for dashboard sync          │  │ │
+│  │  └──────────────────────────────────────────────────┘  │ │
+│  │                                                         │ │
+│  │  Server has NO domain knowledge. It's a relay.         │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                           ▲                                  │
 │                           │                                  │
@@ -111,74 +103,97 @@
   └──────────┘        └──────────┘       └──────────┘
 ```
 
-### Components
+### Key Insight: App-Driven Dashboard
 
-#### 1. Androidoscopy Service (Rust)
+The server is **completely generic**. It doesn't know what "memory" or "cache" means. Each app:
+
+1. Sends a **UI schema** at registration describing its dashboard layout
+2. Sends **data updates** as opaque JSON blobs
+3. The dashboard **renders dynamically** based on the schema
+
+This means:
+- Server code never changes for new metric types
+- Apps have full control over their debug UI
+- Same server works for any app, any domain
+- SDK provides templates for common patterns (memory, logs, etc.)
+
+---
+
+## Components
+
+### 1. Androidoscopy Service (Rust)
 
 **Responsibilities:**
-- Accept WebSocket connections from apps
-- Manage app sessions (connect, disconnect, heartbeat)
-- Store and aggregate debug data
-- Serve web dashboard
-- Provide REST API for querying data
+- Accept WebSocket connections from apps and dashboard
+- Manage sessions (connect, disconnect, track active apps)
+- Store UI schemas in memory
+- Relay messages between apps and dashboard
+- Serve dashboard static files
 
-**Why Rust?**
-- Low resource usage (runs 24/7 as daemon)
-- Type safety for protocol handling
-- Fast, efficient for real-time data streaming
+**What it does NOT do:**
+- Persist data to disk (in-memory only for MVP)
+- Understand app-specific data formats
+- Validate metric contents
+- Aggregate or transform data
 
-**Framework:** Axum
-- Modern, tokio-native HTTP framework
+**Technology:**
+- **Framework:** Axum (modern, tokio-native HTTP framework)
 - Built-in WebSocket support
 - Tower middleware ecosystem
 - Maintained by tokio team
 
-#### 2. Android SDK (Kotlin)
+### 2. Android SDK (Kotlin)
 
 **Responsibilities:**
 - Connect to service via WebSocket
-- Send app metadata on registration
-- Push debug data (metrics, logs, events)
+- Provide UI schema builders for dashboard layout
+- Offer built-in templates (memory, logs, cache, etc.)
+- Allow custom widgets and actions
+- Push data updates
 - Handle reconnection logic
-- Provide easy-to-use API for app developers
 
 **WebSocket Client:** OkHttp
 - Already a dependency in most Android apps
 - Battle-tested WebSocket support
 - Well-documented API
 
-**Integration Example:**
+**SDK Philosophy:**
 ```kotlin
-class MyApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
+// The SDK provides building blocks, not a fixed structure
+Androidoscopy.init(this) {
+    dashboard {
+        // Use built-in templates
+        memorySection()
+        logsSection()
 
-        Androidoscopy.init(this) {
-            appName = "Pezzottify"
-            enableMemoryMonitoring = true
-            enableCacheMetrics = true
-            customMetrics = listOf(
-                MetricProvider { mapOf("custom_stat" to getValue()) }
-            )
+        // Add custom sections
+        section("Downloads") {
+            row {
+                number("Active", data = "$.downloads.active")
+                number("Queued", data = "$.downloads.queued")
+            }
+            action("Cancel All") { downloadManager.cancelAll() }
         }
     }
 }
 ```
 
-#### 3. Web Dashboard
+### 3. Web Dashboard (Svelte)
 
 **Responsibilities:**
-- Show all connected apps/devices
-- Display real-time metrics
-- Show historical data
-- Allow filtering/searching
-- Trigger actions (clear cache, etc.)
+- Connect to service via WebSocket
+- Receive UI schemas from connected apps
+- Dynamically render widgets based on schema
+- Send user actions back to apps
+- Show all connected apps/sessions
 
 **Technology:** Svelte
 - Compiles to vanilla JS with minimal runtime (~2KB)
 - Less boilerplate than React/Vue
 - Scoped CSS by default
 - Fast builds with Vite
+
+**Dashboard is a generic renderer** - it interprets the UI schema and renders appropriate widgets. It has no app-specific knowledge.
 
 ---
 
@@ -191,62 +206,25 @@ App                                    Service
  │                                        │
  ├─── CONNECT (WebSocket) ───────────────>│
  │                                        │
- │<─────── CONNECTED (ack) ───────────────┤
- │                                        │
- ├─── REGISTER (app metadata) ──────────>│
+ ├─── REGISTER (app info + UI schema) ───>│
  │                                        │
  │<─────── REGISTERED (session_id) ───────┤
  │                                        │
- ├─── METRICS (cache stats) ─────────────>│
+ ├─── DATA (metrics blob) ───────────────>│
  │                                        │
- ├─── EVENT (user action) ───────────────>│
+ ├─── LOG (log entry) ───────────────────>│
  │                                        │
- │<─────── COMMAND (clear_cache) ─────────┤
+ │<─────── ACTION (user triggered) ───────┤
  │                                        │
- ├─── RESULT (success) ──────────────────>│
+ ├─── ACTION_RESULT (success/fail) ──────>│
  │                                        │
- │<─────── SHUTDOWN (service restart) ────┤
- │                                        │
- │         (connection closes)            │
- │                                        │
- │      ... reconnection attempts ...     │
- │                                        │
- ├─── CONNECT (WebSocket) ───────────────>│
- │                                        │
- ├─── REGISTER (with resume_token) ──────>│
- │                                        │
- │<─────── REGISTERED (same session_id) ──┤
 ```
-
-### Session Recovery
-
-When a connection drops unexpectedly, the app can attempt to resume its session within a cooldown period (default: 1 minute).
-
-The REGISTER message can include an optional `resume_token` to request session recovery:
-
-```json
-{
-  "type": "REGISTER",
-  "payload": {
-    "protocol_version": "1.0",
-    "resume_token": "550e8400-e29b-41d4-a716-446655440000",
-    "app_name": "Pezzottify",
-    ...
-  }
-}
-```
-
-If the session is still valid (within cooldown period), the service responds with the same `session_id`, maintaining continuity. Otherwise, a new session is created.
-
-### Connection Health
-
-Connection health is determined by the WebSocket connection state. No application-level heartbeat is implemented—we rely on the underlying WebSocket protocol for connection monitoring.
 
 ### Message Format
 
 All messages are JSON over WebSocket.
 
-#### Base Message Structure
+#### Base Structure
 
 ```json
 {
@@ -257,11 +235,13 @@ All messages are JSON over WebSocket.
 }
 ```
 
-**Notes:**
-- `timestamp`: ISO 8601 format (e.g., `yyyy-MM-ddTHH:mm:ss.SSSZ`)
-- `protocol_version`: Included in REGISTER message for compatibility checking
+---
 
-#### REGISTER Message (App → Service)
+### App → Service Messages
+
+#### REGISTER
+
+Sent immediately after WebSocket connection. Includes app info and **UI schema**.
 
 ```json
 {
@@ -273,7 +253,7 @@ All messages are JSON over WebSocket.
     "package_name": "com.lelloman.pezzottify",
     "version_name": "1.0.0",
     "version_code": 42,
-    "device_info": {
+    "device": {
       "device_id": "d3b07384-d9a3-4e6b-8b0d-324f5e8c1a2f",
       "manufacturer": "Google",
       "model": "Pixel 5",
@@ -281,95 +261,126 @@ All messages are JSON over WebSocket.
       "api_level": 34,
       "is_emulator": true
     },
-    "capabilities": [
-      "memory_metrics",
-      "cache_metrics",
-      "logs",
-      "custom_events"
-    ]
+    "dashboard": {
+      "sections": [
+        {
+          "id": "memory",
+          "title": "Memory",
+          "widgets": [
+            {
+              "type": "gauge",
+              "label": "Heap Usage",
+              "value": "$.memory.heap_used_bytes",
+              "max": "$.memory.heap_max_bytes",
+              "format": "bytes"
+            },
+            {
+              "type": "badge",
+              "label": "Pressure",
+              "value": "$.memory.pressure_level",
+              "variants": {
+                "LOW": "success",
+                "MODERATE": "warning",
+                "HIGH": "danger",
+                "CRITICAL": "danger"
+              }
+            }
+          ]
+        },
+        {
+          "id": "caches",
+          "title": "Caches",
+          "widget": {
+            "type": "table",
+            "data": "$.cache",
+            "columns": [
+              { "key": "name", "label": "Name" },
+              { "key": "entry_count", "label": "Entries" },
+              { "key": "size_bytes", "label": "Size", "format": "bytes" },
+              { "key": "hit_rate", "label": "Hit Rate", "format": "percent" }
+            ],
+            "row_actions": [
+              { "id": "clear_cache", "label": "Clear", "args": { "cache_name": "$.name" } }
+            ]
+          }
+        },
+        {
+          "id": "actions",
+          "title": "Actions",
+          "widgets": [
+            {
+              "type": "button",
+              "label": "Clear All Caches",
+              "action": "clear_all_caches",
+              "style": "danger"
+            },
+            {
+              "type": "button",
+              "label": "Refresh Token",
+              "action": "refresh_token",
+              "style": "primary"
+            }
+          ]
+        },
+        {
+          "id": "logs",
+          "title": "Logs",
+          "widget": {
+            "type": "log_viewer",
+            "data": "$.logs"
+          }
+        }
+      ]
+    }
   }
 }
 ```
 
 **Notes:**
-- `device_id`: UUID generated by the SDK on first run, persisted in app storage. Resets if app storage is cleared.
+- `device_id`: UUID generated by SDK on first run, persisted in app storage
+- `dashboard`: UI schema defining how to render this app's debug view
+- Widget `value` fields use JSONPath syntax to reference data
 
-#### REGISTERED Response (Service → App)
+#### REGISTERED (Service → App)
 
 ```json
 {
   "type": "REGISTERED",
   "timestamp": "2024-12-02T14:30:00.000Z",
   "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "config": {
-      "metrics_interval_ms": 5000
-    }
+    "session_id": "550e8400-e29b-41d4-a716-446655440000"
   }
 }
 ```
 
-#### METRICS (App → Service)
+#### DATA
+
+Sends data updates. The server doesn't interpret this - it's forwarded to dashboard and rendered according to UI schema.
 
 ```json
 {
-  "type": "METRICS",
+  "type": "DATA",
   "timestamp": "2024-12-02T14:30:00.000Z",
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "payload": {
     "memory": {
       "pressure_level": "LOW",
       "heap_used_bytes": 45678900,
-      "heap_max_bytes": 268435456,
-      "available_memory_mb": 1024
+      "heap_max_bytes": 268435456
     },
-    "cache": {
-      "artists": {
-        "entry_count": 150,
-        "size_bytes": 45000,
-        "hits": 1200,
-        "misses": 80,
-        "evictions": 5
-      },
-      "albums": {
-        "entry_count": 300,
-        "size_bytes": 120000,
-        "hits": 2500,
-        "misses": 150,
-        "evictions": 12
-      }
-    },
-    "custom": {
-      "active_downloads": 3,
-      "queued_tracks": 42
+    "cache": [
+      { "name": "artists", "entry_count": 150, "size_bytes": 45000, "hit_rate": 0.94 },
+      { "name": "albums", "entry_count": 300, "size_bytes": 120000, "hit_rate": 0.91 }
+    ],
+    "downloads": {
+      "active": 3,
+      "queued": 12
     }
   }
 }
 ```
 
-**Notes:**
-- `pressure_level`: One of `LOW`, `MODERATE`, `HIGH`, `CRITICAL`
-- `cache`: Keys are arbitrary cache names defined by the app (e.g., "artists", "albums")
-
-#### EVENT (App → Service)
-
-```json
-{
-  "type": "EVENT",
-  "timestamp": "2024-12-02T14:30:00.000Z",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "payload": {
-    "event_name": "cache_cleared",
-    "event_category": "user_action",
-    "data": {
-      "cache_type": "all",
-      "entries_removed": 450
-    }
-  }
-}
-```
-
-#### LOG (App → Service)
+#### LOG
 
 ```json
 {
@@ -380,56 +391,55 @@ All messages are JSON over WebSocket.
     "level": "ERROR",
     "tag": "NetworkClient",
     "message": "Failed to fetch artist data",
-    "throwable": "java.net.SocketTimeoutException: timeout\n  at ...",
-    "thread": "OkHttp Dispatcher"
+    "throwable": "java.net.SocketTimeoutException: timeout\n  at ..."
   }
 }
 ```
 
-**Notes:**
-- `level`: Android log levels - `VERBOSE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `ASSERT`
+#### ACTION_RESULT
 
-#### COMMAND (Service → App)
+Response to an ACTION from the dashboard.
 
 ```json
 {
-  "type": "COMMAND",
+  "type": "ACTION_RESULT",
   "timestamp": "2024-12-02T14:30:00.000Z",
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "payload": {
-    "command_id": "cmd-123",
-    "command": "clear_cache",
-    "args": {
-      "cache_type": "artists"
+    "action_id": "act-123",
+    "success": true,
+    "message": "Cleared 150 entries",
+    "data": {
+      "entries_removed": 150
     }
   }
 }
 ```
 
-**Command Timeout:**
-The service expects a RESULT within 30 seconds. If no response is received, the dashboard displays a timeout error for that command.
+---
 
-#### RESULT (App → Service)
+### Service → App Messages
+
+#### ACTION
+
+Triggered by user in dashboard.
 
 ```json
 {
-  "type": "RESULT",
+  "type": "ACTION",
   "timestamp": "2024-12-02T14:30:00.000Z",
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "payload": {
-    "command_id": "cmd-123",
-    "success": true,
-    "data": {
-      "entries_removed": 150
-    },
-    "error": null
+    "action_id": "act-123",
+    "action": "clear_cache",
+    "args": {
+      "cache_name": "artists"
+    }
   }
 }
 ```
 
-#### ERROR (Service → App)
-
-Sent when the service encounters an error processing a message from the app.
+#### ERROR
 
 ```json
 {
@@ -438,87 +448,16 @@ Sent when the service encounters an error processing a message from the app.
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "payload": {
     "error_code": "INVALID_MESSAGE",
-    "message": "Unknown message type: FOOBAR",
-    "original_message_type": "FOOBAR"
-  }
-}
-```
-
-**Error Codes:**
-- `INVALID_MESSAGE` - Malformed or unknown message type
-- `PROTOCOL_VERSION_MISMATCH` - Incompatible protocol version
-- `SESSION_NOT_FOUND` - Invalid or expired session_id
-- `PAYLOAD_TOO_LARGE` - Message exceeds size limit
-- `INTERNAL_ERROR` - Server-side error
-
-**App Error Handling Strategy:**
-When the SDK receives errors from the service, it should log aggressively to logcat. The dashboard will display app-side errors for visibility.
-
-#### SHUTDOWN (Service → App)
-
-Sent when the service is shutting down gracefully, allowing apps to enter reconnection mode.
-
-```json
-{
-  "type": "SHUTDOWN",
-  "timestamp": "2024-12-02T14:30:00.000Z",
-  "payload": {
-    "reason": "Service restarting",
-    "reconnect_after_ms": 5000
-  }
-}
-```
-
-Upon receiving SHUTDOWN, the app SDK enters a polling/reconnection phase, attempting to reconnect for a configurable duration (default: 5 minutes) before declaring an error state.
-
-#### BATCH (App → Service)
-
-Allows sending multiple messages in a single WebSocket frame to reduce overhead.
-
-```json
-{
-  "type": "BATCH",
-  "timestamp": "2024-12-02T14:30:00.000Z",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "payload": {
-    "messages": [
-      {
-        "type": "LOG",
-        "timestamp": "2024-12-02T14:30:00.000Z",
-        "payload": { "level": "INFO", "tag": "App", "message": "Started" }
-      },
-      {
-        "type": "METRICS",
-        "timestamp": "2024-12-02T14:30:00.100Z",
-        "payload": { "memory": { "heap_used_bytes": 45678900 } }
-      }
-    ]
+    "message": "Unknown message type: FOOBAR"
   }
 }
 ```
 
 ---
 
-### Message Size Limits
+### Dashboard ↔ Service Protocol
 
-To prevent runaway messages (e.g., huge stacktraces), the following limits apply:
-
-| Field | Max Size |
-|-------|----------|
-| Single message | 1 MB |
-| LOG `message` field | 64 KB |
-| LOG `throwable` field | 256 KB |
-| BATCH `messages` array | 100 messages |
-
-**Truncation Strategy:**
-- Messages exceeding limits are truncated with a `[TRUNCATED]` marker appended
-- The service responds with an ERROR (code: `PAYLOAD_TOO_LARGE`) if the entire message exceeds 1 MB
-
----
-
-### Dashboard WebSocket Protocol
-
-The dashboard connects to the service via WebSocket to receive real-time updates. Data is always persisted to SQLite regardless of dashboard connection status.
+The dashboard connects via WebSocket to receive real-time updates.
 
 #### Connection Flow
 
@@ -527,22 +466,25 @@ Dashboard                              Service
     │                                     │
     ├─── CONNECT (WebSocket) ────────────>│
     │                                     │
-    │<─────── SYNC (initial state) ───────┤
+    │<─────── SYNC (current state) ───────┤
     │                                     │
-    │<─────── APP_CONNECTED ──────────────┤  (when app connects)
+    │<─────── SESSION_STARTED ────────────┤  (when app connects)
     │                                     │
-    │<─────── METRICS_UPDATE ─────────────┤  (live metrics)
+    │<─────── SESSION_DATA ───────────────┤  (forwarded DATA)
     │                                     │
-    │<─────── LOG ────────────────────────┤  (live logs)
+    │<─────── SESSION_LOG ────────────────┤  (forwarded LOG)
     │                                     │
-    │<─────── EVENT ──────────────────────┤  (live events)
+    │<─────── SESSION_ENDED ──────────────┤  (when app disconnects)
     │                                     │
-    │<─────── APP_DISCONNECTED ───────────┤  (when app disconnects)
+    ├─── ACTION ─────────────────────────>│  (user clicks button)
+    │                                     │
+    │<─────── ACTION_RESULT ──────────────┤  (forwarded from app)
 ```
 
-#### Message Formats (Service → Dashboard)
+#### SYNC (Service → Dashboard)
 
-**SYNC** - Sent immediately on dashboard connection with current state:
+Sent on dashboard connect with all active sessions.
+
 ```json
 {
   "type": "SYNC",
@@ -552,111 +494,559 @@ Dashboard                              Service
         "session_id": "550e8400-e29b-41d4-a716-446655440000",
         "app_name": "Pezzottify",
         "package_name": "com.lelloman.pezzottify",
-        "device": { "model": "Pixel 5", "is_emulator": true },
+        "version_name": "1.0.0",
+        "device": {
+          "model": "Pixel 5",
+          "is_emulator": true
+        },
         "started_at": "2024-12-02T14:30:00.000Z",
-        "is_active": true,
-        "latest_metrics": { ... }
+        "dashboard": { ... },
+        "latest_data": { ... },
+        "recent_logs": [ ... ]
       }
     ]
   }
 }
 ```
 
-**APP_CONNECTED** - When an app registers:
+#### SESSION_STARTED (Service → Dashboard)
+
 ```json
 {
-  "type": "APP_CONNECTED",
+  "type": "SESSION_STARTED",
   "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "app_name": "Pezzottify",
-    "package_name": "com.lelloman.pezzottify",
-    "device": {
-      "model": "Pixel 5",
-      "android_version": "14",
-      "is_emulator": true
-    }
+    "session_id": "...",
+    "app_name": "...",
+    "device": { ... },
+    "dashboard": { ... }
   }
 }
 ```
 
-**APP_DISCONNECTED** - When an app disconnects:
-```json
-{
-  "type": "APP_DISCONNECTED",
-  "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000"
-  }
-}
-```
+#### SESSION_DATA (Service → Dashboard)
 
-**METRICS_UPDATE** - Forwarded metrics from app:
-```json
-{
-  "type": "METRICS_UPDATE",
-  "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2024-12-02T14:30:00.000Z",
-    "metrics": {
-      "memory": { ... },
-      "cache": { ... },
-      "custom": { ... }
-    }
-  }
-}
-```
+Forwarded DATA from app.
 
-**LOG** - Forwarded log from app:
 ```json
 {
-  "type": "LOG",
+  "type": "SESSION_DATA",
   "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2024-12-02T14:30:00.000Z",
-    "level": "ERROR",
-    "tag": "NetworkClient",
-    "message": "Connection failed"
-  }
-}
-```
-
-**EVENT** - Forwarded event from app:
-```json
-{
-  "type": "EVENT",
-  "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "timestamp": "2024-12-02T14:30:00.000Z",
-    "event_name": "cache_cleared",
+    "session_id": "...",
+    "timestamp": "...",
     "data": { ... }
   }
 }
 ```
 
-#### Message Formats (Dashboard → Service)
+#### SESSION_LOG (Service → Dashboard)
 
-**COMMAND** - Trigger action on an app:
+Forwarded LOG from app.
+
 ```json
 {
-  "type": "COMMAND",
+  "type": "SESSION_LOG",
   "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "command": "clear_cache",
-    "args": { "cache_type": "artists" }
+    "session_id": "...",
+    "timestamp": "...",
+    "level": "ERROR",
+    "tag": "...",
+    "message": "..."
   }
 }
 ```
 
-**COMMAND_RESULT** - Forwarded back to dashboard after app responds:
+#### SESSION_ENDED (Service → Dashboard)
+
 ```json
 {
-  "type": "COMMAND_RESULT",
+  "type": "SESSION_ENDED",
   "payload": {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "command_id": "cmd-123",
-    "success": true,
-    "data": { "entries_removed": 150 }
+    "session_id": "..."
   }
 }
+```
+
+#### ACTION (Dashboard → Service)
+
+```json
+{
+  "type": "ACTION",
+  "payload": {
+    "session_id": "...",
+    "action": "clear_cache",
+    "args": { "cache_name": "artists" }
+  }
+}
+```
+
+---
+
+### Message Size Limits
+
+| Field | Max Size |
+|-------|----------|
+| Single message | 1 MB |
+| LOG `message` field | 64 KB |
+| LOG `throwable` field | 256 KB |
+
+---
+
+## UI Schema Specification
+
+The UI schema defines how the dashboard renders an app's debug view. The schema supports flexible layouts and conditional rendering.
+
+### Widget Types
+
+The dashboard supports a fixed set of built-in widget types. Custom widgets are not supported - if a use case isn't covered, we add a new built-in type.
+
+| Type | Description | Properties |
+|------|-------------|------------|
+| `gauge` | Progress bar with value/max | `value`, `max`, `format`, `thresholds` |
+| `number` | Simple numeric display | `value`, `format`, `thresholds` |
+| `text` | Text display | `value` |
+| `badge` | Colored label | `value`, `variants` |
+| `table` | Data table | `data`, `columns`, `row_actions` |
+| `log_viewer` | Scrolling log display | `data` (see Log Viewer section) |
+| `button` | Action trigger | `action`, `args`, `style` |
+
+### Layout System
+
+Sections support flexible layouts:
+
+```json
+{
+  "id": "overview",
+  "title": "Overview",
+  "layout": "grid",
+  "columns": 3,
+  "collapsible": true,
+  "collapsed_default": false,
+  "widgets": [...]
+}
+```
+
+**Layout Types:**
+| Layout | Description |
+|--------|-------------|
+| `row` | Widgets in a horizontal row (default) |
+| `grid` | CSS grid with configurable columns |
+| `stack` | Vertical stack of widgets |
+
+**Section Options:**
+| Option | Description |
+|--------|-------------|
+| `collapsible` | Section can be collapsed/expanded |
+| `collapsed_default` | Start collapsed |
+| `columns` | Number of grid columns (for `grid` layout) |
+
+### Conditional Rendering
+
+Widgets can be shown/hidden based on data values:
+
+```json
+{
+  "type": "badge",
+  "label": "Warning",
+  "value": "$.status",
+  "visible_when": {
+    "path": "$.error_count",
+    "operator": "gt",
+    "value": 0
+  }
+}
+```
+
+**Operators:**
+| Operator | Description |
+|----------|-------------|
+| `eq` | Equals |
+| `neq` | Not equals |
+| `gt` | Greater than |
+| `gte` | Greater than or equal |
+| `lt` | Less than |
+| `lte` | Less than or equal |
+| `exists` | Value is not null/undefined |
+
+### Threshold-Based Styling
+
+Widgets can change appearance based on value thresholds:
+
+```json
+{
+  "type": "gauge",
+  "label": "Heap Usage",
+  "value": "$.memory.heap_used_bytes",
+  "max": "$.memory.heap_max_bytes",
+  "format": "bytes",
+  "thresholds": [
+    { "max": 0.7, "style": "success" },
+    { "max": 0.9, "style": "warning" },
+    { "max": 1.0, "style": "danger" }
+  ]
+}
+```
+
+For gauges, thresholds are percentages of value/max. For numbers, thresholds compare the raw value.
+
+**Threshold Styles:**
+| Style | Color |
+|-------|-------|
+| `success` | Green |
+| `warning` | Yellow/Orange |
+| `danger` | Red |
+| `info` | Blue |
+| `muted` | Gray |
+
+### Value References (JSONPath)
+
+Widget values use JSONPath to reference data:
+- `$.memory.heap_used_bytes` - Direct path
+- `$.cache[0].name` - Array access
+- `$.cache` - Entire array (for tables)
+
+### Formats
+
+| Format | Example |
+|--------|---------|
+| `bytes` | 45678900 → "43.5 MB" |
+| `percent` | 0.94 → "94%" |
+| `duration` | 3600000 → "1h 0m" |
+| `number` | 1234567 → "1,234,567" |
+
+### Button Styles
+
+| Style | Use Case |
+|-------|----------|
+| `primary` | Main actions |
+| `secondary` | Alternative actions |
+| `danger` | Destructive actions (clear, delete) |
+
+### Actions
+
+Actions can require user input and specify how to handle results.
+
+#### Action Arguments
+
+Actions can collect user input via a dialog before executing:
+
+```json
+{
+  "type": "button",
+  "label": "Set Max Downloads",
+  "action": "set_max_downloads",
+  "style": "primary",
+  "args_dialog": {
+    "title": "Set Maximum Concurrent Downloads",
+    "fields": [
+      { "key": "max", "label": "Maximum", "type": "number", "default": 3, "min": 1, "max": 10 }
+    ]
+  }
+}
+```
+
+**Field Types:**
+| Type | Description |
+|------|-------------|
+| `text` | Single-line text input |
+| `number` | Numeric input with optional min/max |
+| `select` | Dropdown with options |
+| `checkbox` | Boolean toggle |
+
+**Select Example:**
+```json
+{ "key": "cache_type", "label": "Cache", "type": "select", "options": [
+  { "value": "all", "label": "All Caches" },
+  { "value": "images", "label": "Images Only" }
+]}
+```
+
+When `args_dialog` is present, clicking the button opens a dialog. User fills in fields and confirms, then the action is sent with collected args.
+
+#### Result Handling
+
+Actions specify how to display results via `result_display`:
+
+```json
+{
+  "type": "button",
+  "label": "Refresh Token",
+  "action": "refresh_token",
+  "result_display": {
+    "type": "toast"
+  }
+}
+```
+
+**Result Display Types:**
+| Type | Description |
+|------|-------------|
+| `toast` | Show result message in toast notification (default) |
+| `dialog` | Show result in a modal dialog |
+| `update` | Update a text widget with the result |
+
+**Update Example:**
+```json
+{
+  "type": "button",
+  "label": "Get Token",
+  "action": "get_current_token",
+  "result_display": {
+    "type": "update",
+    "target_id": "token_display",
+    "mode": "replace",
+    "value": "$.data.token"
+  }
+}
+```
+
+| Mode | Description |
+|------|-------------|
+| `replace` | Replace widget content with result value |
+| `append` | Append result value to existing content |
+
+#### Button State Feedback
+
+| State | Appearance |
+|-------|------------|
+| Idle | Normal styling |
+| Loading | Spinner, disabled |
+| Success | Brief green flash, then idle |
+| Error | Red border + error icon, clears on next click |
+
+### Log Viewer Widget
+
+The `log_viewer` widget displays scrollable logs with filtering and search.
+
+**Features:**
+| Feature | Behavior |
+|---------|----------|
+| Scrolling | Infinite scroll, newest logs at bottom |
+| Level filter | Dropdown to filter by level (VERBOSE, DEBUG, INFO, WARN, ERROR) |
+| Tag filter | Text input to filter by tag (substring match) |
+| Text search | Filter logs by message content (substring match) |
+| Auto-scroll | Enabled by default, pauses when user scrolls up |
+| Jump to bottom | Button appears when auto-scroll is paused |
+
+**Schema Example:**
+```json
+{
+  "id": "logs",
+  "title": "Logs",
+  "widget": {
+    "type": "log_viewer",
+    "data": "$.logs",
+    "default_level": "INFO",
+    "default_tag_filter": ""
+  }
+}
+```
+
+**Log Entry Display:**
+```
+[14:30:05.123] ERROR NetworkClient
+    Failed to fetch artist data
+    java.net.SocketTimeoutException: timeout
+        at okhttp3.internal...
+```
+
+---
+
+## SDK Design
+
+### Initialization
+
+```kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+
+        Androidoscopy.init(this) {
+            // Optional: override auto-detected values
+            appName = "Pezzottify"
+
+            // Define dashboard layout
+            dashboard {
+                // Built-in templates
+                memorySection()
+                logsSection()
+
+                // Custom section
+                section("Downloads") {
+                    row {
+                        number("Active", "$.downloads.active")
+                        number("Queued", "$.downloads.queued")
+                        bytes("Total Size", "$.downloads.total_bytes")
+                    }
+                    actions {
+                        button("Cancel All", action = "cancel_downloads", style = Style.DANGER)
+                    }
+                }
+
+                // Cache section with built-in template
+                cacheSection(
+                    caches = listOf(
+                        CacheConfig("artists", artistCache),
+                        CacheConfig("albums", albumCache)
+                    )
+                )
+            }
+
+            // Register action handlers
+            onAction("cancel_downloads") {
+                downloadManager.cancelAll()
+                ActionResult.success("Cancelled all downloads")
+            }
+
+            onAction("clear_cache") { args ->
+                val cacheName = args["cache_name"] as String
+                val removed = cacheManager.clear(cacheName)
+                ActionResult.success("Cleared $removed entries")
+            }
+        }
+    }
+}
+```
+
+### Dashboard DSL
+
+```kotlin
+fun dashboard(block: DashboardBuilder.() -> Unit)
+
+class DashboardBuilder {
+    // Built-in templates
+    fun memorySection()
+    fun logsSection()
+    fun cacheSection(caches: List<CacheConfig>)
+
+    // Custom sections
+    fun section(title: String, block: SectionBuilder.() -> Unit)
+}
+
+class SectionBuilder {
+    fun row(block: RowBuilder.() -> Unit)
+    fun table(dataPath: String, block: TableBuilder.() -> Unit)
+    fun actions(block: ActionsBuilder.() -> Unit)
+    fun widget(widget: Widget)
+}
+
+class RowBuilder {
+    fun number(label: String, dataPath: String)
+    fun text(label: String, dataPath: String)
+    fun bytes(label: String, dataPath: String)
+    fun percent(label: String, dataPath: String)
+    fun gauge(label: String, valuePath: String, maxPath: String)
+    fun badge(label: String, dataPath: String, variants: Map<String, BadgeStyle>)
+}
+
+class TableBuilder {
+    fun column(key: String, label: String, format: Format = Format.TEXT)
+    fun rowAction(id: String, label: String, argsBuilder: (RowContext) -> Map<String, Any>)
+}
+
+class ActionsBuilder {
+    fun button(label: String, action: String, style: Style = Style.PRIMARY)
+
+    // Button with argument dialog
+    fun button(
+        label: String,
+        action: String,
+        style: Style = Style.PRIMARY,
+        argsDialog: ArgsDialogBuilder.() -> Unit
+    )
+
+    // Button with result display configuration
+    fun button(
+        label: String,
+        action: String,
+        style: Style = Style.PRIMARY,
+        resultDisplay: ResultDisplay = ResultDisplay.Toast
+    )
+}
+
+class ArgsDialogBuilder {
+    var title: String = ""
+    fun textField(key: String, label: String, default: String = "")
+    fun numberField(key: String, label: String, default: Int = 0, min: Int? = null, max: Int? = null)
+    fun selectField(key: String, label: String, options: List<SelectOption>)
+    fun checkboxField(key: String, label: String, default: Boolean = false)
+}
+
+sealed class ResultDisplay {
+    object Toast : ResultDisplay()
+    object Dialog : ResultDisplay()
+    data class UpdateWidget(val targetId: String, val mode: UpdateMode, val valuePath: String) : ResultDisplay()
+}
+
+enum class UpdateMode { REPLACE, APPEND }
+
+// Example usage:
+actions {
+    button("Set Max Downloads", "set_max_downloads") {
+        title = "Set Maximum Concurrent Downloads"
+        numberField("max", "Maximum", default = 3, min = 1, max = 10)
+    }
+
+    button(
+        "Get Token",
+        "get_current_token",
+        resultDisplay = ResultDisplay.UpdateWidget("token_display", UpdateMode.REPLACE, "$.data.token")
+    )
+}
+```
+
+### Data Updates
+
+The SDK supports both **polling** (for regular metrics) and **push** (for event-driven updates):
+
+```kotlin
+// OPTION 1: Periodic polling via data providers
+// Good for: memory stats, cache stats, queue sizes
+Androidoscopy.registerDataProvider("memory", interval = 5.seconds) {
+    mapOf(
+        "heap_used_bytes" to Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory(),
+        "heap_max_bytes" to Runtime.getRuntime().maxMemory()
+    )
+}
+
+// OPTION 2: Push on demand
+// Good for: events, state changes, completion notifications
+Androidoscopy.updateData {
+    put("downloads", mapOf(
+        "active" to downloadManager.activeCount,
+        "queued" to downloadManager.queuedCount,
+        "last_completed" to lastDownload.name
+    ))
+}
+
+// The SDK internally debounces rapid pushes to prevent flooding
+// Multiple updateData calls within 100ms are batched together
+```
+
+**When to use which:**
+| Use Case | Strategy |
+|----------|----------|
+| Memory/CPU stats | Polling (5-10s interval) |
+| Cache statistics | Polling (5s interval) |
+| Download progress | Push on change |
+| Error occurred | Push immediately |
+| User action completed | Push immediately |
+
+### Logging Integration
+
+```kotlin
+// Timber integration
+class AndroidoscopyTree : Timber.Tree() {
+    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
+        Androidoscopy.log(
+            level = priority.toLogLevel(),
+            tag = tag,
+            message = message,
+            throwable = t
+        )
+    }
+}
+
+Timber.plant(AndroidoscopyTree())
 ```
 
 ---
@@ -674,42 +1064,47 @@ Different emulators use different special IPs to reach the host machine:
 | Android-x86 | `192.168.56.1` |
 | BlueStacks | `10.0.2.2` |
 
-```kotlin
-private val KNOWN_EMULATOR_HOST_IPS = listOf(
-    "10.0.2.2",   // Android Emulator (AVD), BlueStacks
-    "10.0.3.2",   // Genymotion
-    "192.168.56.1" // Android-x86
-)
-
-val serviceUrl = if (isEmulator()) {
-    // Try known emulator IPs in order
-    findReachableHost(KNOWN_EMULATOR_HOST_IPS, port = 9999)
-        ?: "ws://10.0.2.2:9999" // fallback to most common
-} else {
-    // Fall back to configured IP or discovery
-    "ws://${config.hostIp}:9999"
-}
-```
+SDK automatically tries known emulator IPs when `isEmulator()` returns true.
 
 ### Physical Device Connection
 
-**Options:**
+Physical devices discover the service via UDP broadcast:
 
-1. **Manual Configuration**
-   - User sets host IP in app settings
-   - Most reliable, works in any network scenario
-   - Fallback when discovery fails
+1. **Service broadcasts presence** on the local network every 5 seconds
+2. **SDK listens** for broadcast when `isEmulator()` returns false
+3. **SDK connects** to the discovered service IP
 
-2. **Custom Discovery Protocol**
-   - Service broadcasts presence on local network
-   - App discovers automatically without relying on mDNS
-   - Requires both device and host on same WiFi network
-   - **🔴 NEEDS DISCUSSION:** Design custom discovery mechanism
+#### UDP Discovery Protocol
 
-**Connection Priority:**
-1. **Emulator** → Automatic via known emulator IPs
-2. **Physical device, same network** → Custom discovery protocol
-3. **Physical device, discovery fails** → Fall back to manual IP configuration
+**Service Broadcast (port 9998):**
+```json
+{
+  "service": "androidoscopy",
+  "version": "1.0",
+  "websocket_port": 9999,
+  "http_port": 8080
+}
+```
+
+**SDK Discovery Flow:**
+```kotlin
+// 1. Listen for UDP broadcast on port 9998
+// 2. Parse broadcast, extract host IP from packet source
+// 3. Connect to ws://{host_ip}:{websocket_port}
+// 4. If no broadcast received within 10s, fall back to manual config
+```
+
+**Fallback:** If discovery fails, user can manually configure host IP:
+```kotlin
+Androidoscopy.init(this) {
+    hostIp = "192.168.1.100"  // Manual override
+}
+```
+
+**Network Requirements:**
+- Device and host must be on same WiFi network
+- UDP broadcast must not be blocked by router
+- Some corporate/guest networks may block this
 
 ### Reconnection Logic
 
@@ -739,314 +1134,99 @@ class ReconnectionManager {
 
 ---
 
-## Data Storage
+## Testing Strategy
 
-### In-Memory (Required)
+Comprehensive automated testing across all components.
 
-- Current sessions
-- Recent metrics (last N minutes)
-- Active app connections
+### Service (Rust)
 
-### Persistent Storage (Optional - SQLite)
+**Unit Tests:**
+- Message parsing and serialization
+- Session manager logic (create, destroy, lookup)
+- Buffer management (ring buffer for DATA/LOG)
+- Configuration parsing
 
-**Tables:**
+**Integration Tests:**
+- WebSocket connection handling (connect, disconnect, reconnect)
+- Message routing (app → dashboard, dashboard → app)
+- Multi-client scenarios (multiple apps, multiple dashboards)
+- Error handling (malformed messages, oversized payloads)
+- UDP broadcast discovery
 
-```sql
-CREATE TABLE sessions (
-    id TEXT PRIMARY KEY,
-    app_name TEXT NOT NULL,
-    package_name TEXT NOT NULL,
-    version_name TEXT,
-    device_id TEXT NOT NULL,
-    device_model TEXT,
-    started_at INTEGER NOT NULL,
-    ended_at INTEGER,
-    is_active BOOLEAN DEFAULT 1
-);
+**Tools:** `cargo test`, `tokio-test` for async, `wiremock` for HTTP mocking
 
-CREATE TABLE metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    metric_type TEXT NOT NULL,  -- 'memory', 'cache', 'custom'
-    data JSON NOT NULL,
-    FOREIGN KEY (session_id) REFERENCES sessions(id)
-);
+### SDK (Kotlin)
 
-CREATE TABLE events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    event_name TEXT NOT NULL,
-    event_category TEXT,
-    data JSON,
-    FOREIGN KEY (session_id) REFERENCES sessions(id)
-);
+**Unit Tests:**
+- DSL builders (dashboard schema generation)
+- Data provider scheduling
+- Message serialization
+- JSONPath evaluation
+- Reconnection backoff logic
 
-CREATE TABLE logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    level TEXT NOT NULL,
-    tag TEXT,
-    message TEXT NOT NULL,
-    throwable TEXT,
-    FOREIGN KEY (session_id) REFERENCES sessions(id)
-);
+**Integration Tests:**
+- WebSocket connection to real/mock server
+- Full registration flow
+- Data/log sending and receiving
+- Action handling round-trip
+
+**Instrumented Tests (on emulator):**
+- Emulator IP detection
+- Lifecycle integration (app start/stop)
+- Memory pressure callbacks
+
+**Tools:** JUnit 5, MockK, Turbine (for Flow testing), MockWebServer
+
+### Dashboard (Svelte)
+
+**Unit Tests:**
+- Widget components (gauge, number, badge, table, etc.)
+- JSONPath value extraction
+- Format functions (bytes, percent, duration)
+- Threshold evaluation
+- Conditional rendering logic
+
+**Component Tests:**
+- Section rendering with mock data
+- Layout variations (row, grid, stack)
+- Action button interactions
+- Log viewer scrolling/filtering
+
+**E2E Tests:**
+- Full dashboard with mock WebSocket server
+- Session list rendering
+- Real-time data updates
+- Action triggering and result display
+
+**Tools:** Vitest, Testing Library, Playwright
+
+### End-to-End Tests
+
+**Full Stack Integration:**
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Test SDK   │────>│   Service   │<────│  Dashboard  │
+│  (JVM)      │     │   (Real)    │     │  (Playwright)│
+└─────────────┘     └─────────────┘     └─────────────┘
 ```
 
-**Retention Policy:**
-- Keep last 7 days of data by default
-- Configurable via service config
-- Auto-cleanup on startup
+**Scenarios:**
+- App connects, dashboard sees it appear
+- App sends DATA, dashboard renders widgets
+- App sends LOG, log viewer updates
+- Dashboard triggers ACTION, app receives and responds
+- App disconnects, dashboard shows session ended
+- Service restart, app reconnects
 
----
-
-## Dashboard Design
-
-### Main View - Connected Apps
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Androidoscopy                                    [Settings] │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Connected Apps (3)                           [Auto-refresh] │
-│                                                               │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ 📱 Pezzottify v1.0.0                    [Disconnect]  │  │
-│  │    Pixel 5 Emulator (Android 14)                      │  │
-│  │    Session: 00:15:32                                  │  │
-│  │                                                        │  │
-│  │    Memory: 45 MB / 256 MB  ██░░░░░░░░ 17%            │  │
-│  │    Cache Hit Rate: 94%                                │  │
-│  │    Last Update: 2s ago                                │  │
-│  │                                            [View Details] │  │
-│  └───────────────────────────────────────────────────────┘  │
-│                                                               │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ 📱 TestApp v2.1.0                       [Disconnect]  │  │
-│  │    Samsung Galaxy S21 (Android 13)                    │  │
-│  │    Session: 01:23:45                                  │  │
-│  │    ...                                                │  │
-│  └───────────────────────────────────────────────────────┘  │
-│                                                               │
-│  Recent Sessions (5)                          [View All]     │
-│  • Pezzottify - ended 5m ago                                │
-│  • OtherApp - ended 1h ago                                  │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### App Detail View
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ← Back          Pezzottify v1.0.0                           │
-│                  Pixel 5 Emulator • Session: 00:15:32        │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  [Memory] [Cache] [Events] [Logs] [Custom]                  │
-│                                                               │
-│  ┌─ Memory ──────────────────────────────────────────────┐  │
-│  │  Pressure: LOW                                         │  │
-│  │  Heap: 45 MB / 256 MB                                 │  │
-│  │  ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 17%        │  │
-│  │  Available: 1024 MB                                   │  │
-│  │                                                        │  │
-│  │  [Chart: Memory over time]                            │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                               │
-│  ┌─ Cache Statistics ────────────────────────────────────┐  │
-│  │                                                        │  │
-│  │  Artists    150 entries  45 KB   Hits: 1200  (94%)   │  │
-│  │  Albums     300 entries  120 KB  Hits: 2500  (94%)   │  │
-│  │  Tracks     500 entries  200 KB  Hits: 4000  (95%)   │  │
-│  │  Images     200 entries  2.5 MB  Hits: 1800  (90%)   │  │
-│  │                                                        │  │
-│  │  Total Hit Rate: 94%  ████████░░ Evictions: 42       │  │
-│  │                                                        │  │
-│  │  [Clear All Cache]  [Clear by Type ▼]                │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## SDK Design
-
-### Initialization
-
-```kotlin
-object Androidoscopy {
-    fun init(
-        context: Context,
-        config: AndroidoscopyConfig.() -> Unit
-    ) {
-        val configuration = AndroidoscopyConfig().apply(config)
-        // Start service, connect
-    }
-}
-
-class AndroidoscopyConfig {
-    var appName: String? = null  // Auto-detect from manifest if null
-    var hostIp: String? = null   // Auto-detect emulator, otherwise required
-    var port: Int = 9999
-
-    var enableMemoryMonitoring: Boolean = true
-    var enableCacheMetrics: Boolean = false
-    var enableLogForwarding: Boolean = false
-
-    var memoryUpdateInterval: Duration = 10.seconds
-    var metricsUpdateInterval: Duration = 5.seconds
-
-    var customMetrics: List<MetricProvider> = emptyList()
-    var commandHandlers: Map<String, CommandHandler> = emptyMap()
-}
-```
-
-### Metric Providers
-
-```kotlin
-interface MetricProvider {
-    val name: String
-    fun collect(): Map<String, Any>
-}
-
-// Example usage:
-class DownloadQueueMetric(
-    private val downloadManager: DownloadManager
-) : MetricProvider {
-    override val name = "download_queue"
-
-    override fun collect(): Map<String, Any> = mapOf(
-        "active" to downloadManager.activeCount,
-        "queued" to downloadManager.queuedCount,
-        "total_bytes" to downloadManager.totalBytes
-    )
-}
-
-// In app initialization:
-Androidoscopy.init(this) {
-    customMetrics = listOf(
-        DownloadQueueMetric(downloadManager)
-    )
-}
-```
-
-### Command Handlers
-
-```kotlin
-interface CommandHandler {
-    suspend fun handle(args: Map<String, Any>): CommandResult
-}
-
-data class CommandResult(
-    val success: Boolean,
-    val data: Map<String, Any>? = null,
-    val error: String? = null
-)
-
-// Example:
-class ClearCacheHandler(
-    private val cache: StaticsCache
-) : CommandHandler {
-    override suspend fun handle(args: Map<String, Any>): CommandResult {
-        val cacheType = args["cache_type"] as? String
-        val entriesRemoved = cache.clear(cacheType)
-
-        return CommandResult(
-            success = true,
-            data = mapOf("entries_removed" to entriesRemoved)
-        )
-    }
-}
-
-// Registration:
-Androidoscopy.init(this) {
-    commandHandlers = mapOf(
-        "clear_cache" to ClearCacheHandler(cache)
-    )
-}
-```
-
-### Log Forwarding (Optional)
-
-```kotlin
-// Timber integration:
-class AndroidoscopyTree : Timber.Tree() {
-    override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-        Androidoscopy.logEvent(
-            level = priority.toLogLevel(),
-            tag = tag,
-            message = message,
-            throwable = t
-        )
-    }
-}
-
-Timber.plant(AndroidoscopyTree())
-```
-
----
-
-## Installation & Deployment
-
-### Service Installation
-
-```bash
-# Clone repo
-git clone https://github.com/lelloman/androidoscopy.git
-cd androidoscopy
-
-# Build
-cargo build --release
-
-# Run
-./target/release/androidoscopy --config config.toml
-```
-
-Installation scripts and service integration (systemd, launchd, etc.) will be defined at implementation time.
-
-### Service Configuration
-
-```toml
-# /etc/androidoscopy/config.toml
-
-[server]
-websocket_port = 9999
-http_port = 8080
-bind_address = "127.0.0.1"  # Only localhost by default
-max_connections = 100       # Maximum concurrent app connections
-
-[storage]
-enabled = true
-database_path = "/var/lib/androidoscopy/data.db"
-retention_days = 7
-
-[dashboard]
-static_dir = "/usr/share/androidoscopy/dashboard"
-
-[logging]
-level = "info"
-file = "/var/log/androidoscopy/service.log"
-```
-
-### Android SDK Installation (Gradle)
-
-```kotlin
-// settings.gradle.kts
-dependencyResolutionManagement {
-    repositories {
-        maven { url = uri("https://jitpack.io") }
-    }
-}
-
-// app/build.gradle.kts
-dependencies {
-    debugImplementation("com.github.lelloman:androidoscopy:0.1.0")
-}
+**CI Pipeline:**
+```yaml
+test:
+  - cargo test                    # Service unit + integration
+  - ./gradlew test                # SDK unit tests
+  - ./gradlew connectedTest       # SDK instrumented (emulator)
+  - npm run test                  # Dashboard unit + component
+  - npm run test:e2e              # Dashboard E2E
+  - ./scripts/e2e-full-stack.sh   # Full stack integration
 ```
 
 ---
@@ -1077,7 +1257,7 @@ dependencies {
      - User credentials
      - API keys
      - Personal data
-   - Developer controls what gets sent
+   - Developer controls what gets sent via dashboard schema
 
 3. **Debug Builds Only**
    - SDK is `debugImplementation` only
@@ -1086,34 +1266,62 @@ dependencies {
 
 ---
 
-## Extensibility
+## Installation & Deployment
 
-### Plugin System (Future)
+### Service Installation
 
-Allow community-contributed plugins for:
-- Custom visualizations
-- New metric types
-- Integration with other tools (Charles Proxy, etc.)
-- Export formats (CSV, JSON, etc.)
+```bash
+# Clone repo
+git clone https://github.com/lelloman/androidoscopy.git
+cd androidoscopy
 
-```rust
-// Example plugin trait
-trait AndroidoscopyPlugin {
-    fn name(&self) -> &str;
-    fn handle_metrics(&self, metrics: &Metrics) -> PluginResult;
-    fn dashboard_component(&self) -> Option<DashboardComponent>;
-}
+# Build
+cargo build --release
+
+# Run
+./target/release/androidoscopy
 ```
 
-### Language Support (Future)
+### Service Configuration
 
-While starting with Kotlin/Android, protocol is language-agnostic:
-- **iOS SDK** (Swift)
-- **Flutter SDK** (Dart)
-- **React Native SDK** (JavaScript)
-- **Unity SDK** (C#)
+```toml
+# ~/.androidoscopy/config.toml
 
-Same service, different client SDKs.
+[server]
+websocket_port = 9999
+http_port = 8080
+bind_address = "127.0.0.1"
+max_connections = 100
+
+[session]
+# How long to keep ended sessions in memory
+ended_session_ttl_seconds = 300
+
+# How many recent DATA messages to buffer per session
+data_buffer_size = 100
+
+# How many recent logs to buffer per session
+log_buffer_size = 1000
+
+[logging]
+level = "info"
+```
+
+### Android SDK Installation (Gradle)
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+
+// app/build.gradle.kts
+dependencies {
+    debugImplementation("com.github.lelloman:androidoscopy-sdk:0.1.0")
+}
+```
 
 ---
 
@@ -1125,194 +1333,78 @@ Same service, different client SDKs.
 |---------|---------------|-------------|
 | Setup | One-time install | Built-in |
 | Multi-device | Yes | Single device |
-| Custom metrics | Easy (SDK) | Limited |
-| Persistent data | Yes | Session only |
+| Custom metrics | Easy (SDK DSL) | Limited |
 | Browser-based | Yes | IDE-based |
 | Lightweight | Yes | Heavy |
-| Offline access | Yes (local) | Requires IDE |
-
-**Use Case**: Androidoscopy is for quick, always-available debugging. AS Profiler is for deep performance analysis.
-
-### vs. Stetho (Facebook)
-
-| Feature | Androidoscopy | Stetho |
-|---------|---------------|--------|
-| Maintained | Yes (new) | Deprecated |
-| Chrome DevTools | No | Yes |
-| Custom UI | Yes | No |
-| Multi-device | Yes | No |
-| Requires adb | No | Yes |
-| WebSocket | Yes | HTTP only |
-
-**Use Case**: Androidoscopy replaces Stetho with modern tech and better UX.
+| App-defined UI | Yes | No |
 
 ### vs. Flipper (Meta)
 
 | Feature | Androidoscopy | Flipper |
 |---------|---------------|---------|
 | Desktop app | No (browser) | Yes (Electron) |
-| Plugin system | Future | Yes |
+| Plugin system | App-defined schemas | Desktop plugins |
 | Setup complexity | Simple | Complex |
 | Resource usage | Low | High |
 | Dependencies | Minimal | Heavy |
-
-**Use Case**: Androidoscopy is lightweight alternative. Flipper is more feature-rich but heavier.
 
 ---
 
 ## Roadmap
 
 ### Phase 1: MVP (v0.1.0)
-- [ ] Basic Rust service (WebSocket + HTTP)
-- [ ] Session management
-- [ ] Android SDK with basic metrics (memory, custom)
-- [ ] Simple web dashboard (connected apps, metrics display)
-- [ ] Documentation
+- [ ] Rust service (WebSocket relay + static file serving)
+- [ ] Session management (in-memory)
+- [ ] Android SDK with dashboard DSL
+- [ ] Built-in templates (memory, logs)
+- [ ] Svelte dashboard with dynamic widget rendering
+- [ ] Basic widget types (gauge, number, text, badge, table, button)
+- [ ] Action handling
 
-### Phase 2: Core Features (v0.2.0)
-- [ ] Cache metrics support
-- [ ] Event tracking
-- [ ] Log forwarding
-- [ ] Command execution (clear cache, etc.)
-- [ ] Historical data (SQLite storage)
-- [ ] Dashboard improvements (charts, filtering)
+### Phase 2: Enhanced Widgets (v0.2.0)
+- [ ] Log viewer widget with filtering
+- [ ] Chart widget (time series)
+- [ ] More format options
+- [ ] Conditional styling (thresholds, colors)
+- [ ] Collapsible sections
 
 ### Phase 3: Polish (v0.3.0)
-- [ ] mDNS device discovery
-- [ ] Export data (CSV, JSON)
-- [ ] Configuration UI in dashboard
-- [ ] Better error handling and reconnection
+- [ ] Physical device discovery protocol
+- [ ] Session history (keep ended sessions longer)
+- [ ] Export session data (JSON)
+- [ ] Dashboard themes
 - [ ] Performance optimizations
 
 ### Phase 4: Advanced (v1.0.0)
-- [ ] Plugin system
-- [ ] Network traffic inspection
-- [ ] Screenshot capture
-- [ ] Database inspection
-- [ ] SharedPreferences viewer
-- [ ] Custom dashboard themes
-
-### Future Ideas
+- [ ] Persistent storage (optional SQLite)
+- [ ] Cross-session analytics
+- [ ] Custom widget types via plugins
 - [ ] iOS SDK
 - [ ] Flutter SDK
-- [ ] React Native SDK
-- [ ] Desktop client (Tauri)
-- [ ] Cloud sync (optional)
-- [ ] Team collaboration features
-
----
-
-## Open Questions & Decisions Needed
-
-### 1. Capabilities Field Usage
-
-The REGISTER message includes `capabilities`, but how does the service use them?
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define capability semantics
-
-### 2. Metrics Aggregation Strategy
-
-Storing every METRICS message at 5-second intervals = 17,280 rows per day per app. Need downsampling strategy for historical data.
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define aggregation/downsampling rules
-
-### 3. Physical Device Discovery Protocol
-
-Custom discovery mechanism to replace unreliable mDNS.
-
-**Decision:** 🔴 NEEDS DISCUSSION - Design UDP broadcast or similar approach
-
-### 4. Testing Strategy
-
-Need clear vision for unit tests, integration tests, and how to test the SDK without a real device.
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define testing approach from the start
-
-### 5. Session Recovery Token (resume_token)
-
-The session recovery section mentions `resume_token` in the REGISTER message, but it's unclear where the app gets this token initially. Is it the same as `session_id`? Should it be returned in the REGISTERED response?
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define token lifecycle and relationship with session_id
-
-### 6. CONNECTED Message
-
-The connection lifecycle diagram shows a `CONNECTED (ack)` message from service to app, but this message type is not defined in the message formats section.
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define CONNECTED message or remove from diagram
-
-### 7. REST API Endpoints
-
-The dashboard needs a REST API for querying sessions, metrics, logs, etc. No endpoints are currently specified.
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define REST API contract
-
-### 8. JSON Column Querying
-
-The database schema uses `data JSON` columns for metrics, events, and logs. How will these be queried and filtered efficiently?
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define query patterns and whether to extract common fields
-
-### 9. Custom Metrics Value Types
-
-The SDK uses `Map<String, Any>` for custom metrics, but what types are actually valid for serialization? Primitives only? Nested objects? Arrays?
-
-**Decision:** 🔴 NEEDS DISCUSSION - Define supported value types
-
-### 10. Session Manager and Data Store Interaction
-
-The architecture diagram shows Session Manager and Data Store as separate components, but the data flow between them isn't clear. When does data get persisted? Synchronously or async?
-
-**Decision:** 🔴 NEEDS DISCUSSION - Clarify component responsibilities and data flow
 
 ---
 
 ## Success Metrics
-
-How do we know Androidoscopy is successful?
 
 1. **Adoption**
    - GitHub stars
    - Number of apps integrating SDK
    - Community contributions
 
-2. **Usage**
-   - Active service installs
-   - Average session duration
-   - Number of connected apps per user
+2. **Developer Experience**
+   - Time to integrate (target: < 10 minutes)
+   - Lines of code to add basic debug view (target: < 20)
 
-3. **Developer Feedback**
-   - Time saved vs. traditional debugging
-   - Feature requests
-   - Bug reports (few = good quality)
-
-4. **Community**
-   - Contributors
-   - Plugins created
-   - Forks/derivatives
+3. **Performance**
+   - Service memory usage (target: < 50MB)
+   - Dashboard load time (target: < 1s)
+   - Message latency (target: < 100ms)
 
 ---
 
 ## License
 
 **Dual-licensed:** MIT OR Apache-2.0
-- Permissive, allows commercial use
-- Encourages adoption
-- Standard practice in Rust ecosystem
-
----
-
-## Next Steps
-
-1. **Make Technology Decisions** (answer open questions above)
-2. **Create GitHub Repository**
-3. **Implement MVP**
-   - Rust service skeleton
-   - Android SDK skeleton
-   - Basic protocol
-   - Simple dashboard
-4. **Dogfood with Pezzottify**
-5. **Iterate based on real usage**
-6. **Publish v0.1.0**
 
 ---
 
