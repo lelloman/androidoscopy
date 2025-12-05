@@ -46,7 +46,7 @@ export function connect(url?: string) {
     connecting.set(true);
     error.set(null);
 
-    const wsUrl = url || `ws://${location.hostname}:9999/ws/dashboard`;
+    const wsUrl = url || `ws://${location.host}/ws/dashboard`;
 
     try {
         ws = new WebSocket(wsUrl);
