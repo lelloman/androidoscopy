@@ -141,7 +141,9 @@ pub struct MockDashboardClient {
 
 impl MockDashboardClient {
     /// Creates a new mock dashboard client and connects to the server.
-    pub async fn connect(server_url: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn connect(
+        server_url: &str,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let (ws_stream, _) = connect_async(server_url).await?;
         let (mut write, mut read) = ws_stream.split();
 
@@ -181,7 +183,7 @@ impl MockDashboardClient {
         tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
                 let text = serde_json::to_string(&msg).unwrap();
-                if write.send(Message::Text(text.into())).await.is_err() {
+                if write.send(Message::Text(text)).await.is_err() {
                     break;
                 }
             }
@@ -241,7 +243,12 @@ impl MockDashboardClient {
         loop {
             let messages = self.received_messages.lock().await;
             for msg in messages.iter() {
-                if let ServerMessage::SessionData { session_id: sid, payload, .. } = msg {
+                if let ServerMessage::SessionData {
+                    session_id: sid,
+                    payload,
+                    ..
+                } = msg
+                {
                     if sid == session_id {
                         return Some(payload.clone());
                     }
@@ -257,13 +264,22 @@ impl MockDashboardClient {
     }
 
     /// Waits for a SESSION_LOG message for a specific session.
-    pub async fn wait_for_session_log(&self, session_id: &str, timeout_ms: u64) -> Option<LogPayload> {
+    pub async fn wait_for_session_log(
+        &self,
+        session_id: &str,
+        timeout_ms: u64,
+    ) -> Option<LogPayload> {
         let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_millis(timeout_ms);
 
         loop {
             let messages = self.received_messages.lock().await;
             for msg in messages.iter() {
-                if let ServerMessage::SessionLog { session_id: sid, payload, .. } = msg {
+                if let ServerMessage::SessionLog {
+                    session_id: sid,
+                    payload,
+                    ..
+                } = msg
+                {
                     if sid == session_id {
                         return Some(payload.clone());
                     }
@@ -285,7 +301,10 @@ impl MockDashboardClient {
         loop {
             let messages = self.received_messages.lock().await;
             for msg in messages.iter() {
-                if let ServerMessage::SessionEnded { session_id: sid, .. } = msg {
+                if let ServerMessage::SessionEnded {
+                    session_id: sid, ..
+                } = msg
+                {
                     if sid == session_id {
                         return true;
                     }
@@ -301,7 +320,11 @@ impl MockDashboardClient {
     }
 
     /// Waits for an ACTION_RESULT message.
-    pub async fn wait_for_action_result(&self, action_id: &str, timeout_ms: u64) -> Option<ActionResultPayload> {
+    pub async fn wait_for_action_result(
+        &self,
+        action_id: &str,
+        timeout_ms: u64,
+    ) -> Option<ActionResultPayload> {
         let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_millis(timeout_ms);
 
         loop {

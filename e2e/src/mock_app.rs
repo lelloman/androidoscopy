@@ -131,7 +131,9 @@ pub struct MockAppClient {
 
 impl MockAppClient {
     /// Creates a new mock app client and connects to the server.
-    pub async fn connect(server_url: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn connect(
+        server_url: &str,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let (ws_stream, _) = connect_async(server_url).await?;
         let (mut write, mut read) = ws_stream.split();
 
@@ -180,7 +182,7 @@ impl MockAppClient {
                 tokio::select! {
                     Some(msg) = rx.recv() => {
                         let text = serde_json::to_string(&msg).unwrap();
-                        if write.send(Message::Text(text.into())).await.is_err() {
+                        if write.send(Message::Text(text)).await.is_err() {
                             break;
                         }
                     }
@@ -211,7 +213,11 @@ impl MockAppClient {
     }
 
     /// Registers the mock app with the server.
-    pub async fn register(&self, app_name: &str, package_name: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn register(
+        &self,
+        app_name: &str,
+        package_name: &str,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let dashboard = json!({
             "sections": [
                 {
@@ -269,7 +275,10 @@ impl MockAppClient {
     }
 
     /// Sends data to the server.
-    pub async fn send_data(&self, data: Value) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn send_data(
+        &self,
+        data: Value,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let session_id = self.session_id.lock().await;
         let session_id = session_id.as_ref().ok_or("Not registered")?;
 

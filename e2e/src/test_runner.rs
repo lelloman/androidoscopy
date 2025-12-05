@@ -31,7 +31,10 @@ impl TestConfig {
 
     /// Returns the WebSocket URL for dashboard connections.
     pub fn dashboard_ws_url(&self) -> String {
-        format!("ws://{}:{}/ws/dashboard", self.server_host, self.websocket_port)
+        format!(
+            "ws://{}:{}/ws/dashboard",
+            self.server_host, self.websocket_port
+        )
     }
 
     /// Returns the HTTP base URL.
@@ -115,7 +118,10 @@ mod tests {
         };
 
         assert_eq!(config.app_ws_url(), "ws://localhost:9999/ws/app");
-        assert_eq!(config.dashboard_ws_url(), "ws://localhost:9999/ws/dashboard");
+        assert_eq!(
+            config.dashboard_ws_url(),
+            "ws://localhost:9999/ws/dashboard"
+        );
         assert_eq!(config.http_url(), "http://localhost:8080");
     }
 

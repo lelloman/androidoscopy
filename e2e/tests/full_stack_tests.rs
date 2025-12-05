@@ -55,7 +55,10 @@ async fn test_app_connect_dashboard_shows_session() {
 
     // Dashboard should receive SESSION_STARTED
     let session_info = dashboard.wait_for_session_started(2000).await;
-    assert!(session_info.is_some(), "Dashboard should receive SESSION_STARTED");
+    assert!(
+        session_info.is_some(),
+        "Dashboard should receive SESSION_STARTED"
+    );
 
     let session_info = session_info.unwrap();
     assert_eq!(session_info.session_id, session_id);
@@ -109,7 +112,10 @@ async fn test_app_sends_data_dashboard_receives() {
 
     // Dashboard should receive SESSION_DATA
     let received_data = dashboard.wait_for_session_data(&session_id, 2000).await;
-    assert!(received_data.is_some(), "Dashboard should receive SESSION_DATA");
+    assert!(
+        received_data.is_some(),
+        "Dashboard should receive SESSION_DATA"
+    );
 
     let received_data = received_data.unwrap();
     assert_eq!(received_data["memory"]["heap_used"], 1000000);
@@ -219,7 +225,10 @@ async fn test_dashboard_sends_action_app_responds() {
 
     let result = result.unwrap();
     assert!(result.success);
-    assert_eq!(result.message, Some("Cache cleared successfully".to_string()));
+    assert_eq!(
+        result.message,
+        Some("Cache cleared successfully".to_string())
+    );
 
     handle.abort();
 }

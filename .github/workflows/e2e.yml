@@ -1,0 +1,55 @@
+name: E2E Tests CI
+
+on:
+  push:
+    branches: [main, implementation]
+    paths:
+      - 'e2e/**'
+      - 'server/**'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'e2e/**'
+      - 'server/**'
+      - '.github/workflows/e2e.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: e2e
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            e2e/target
+            server/target
+          key: ${{ runner.os }}-cargo-e2e-${{ hashFiles('e2e/Cargo.lock', 'server/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run unit tests
+        run: cargo test --lib
+
+      - name: Run full stack E2E tests
+        run: cargo test --test full_stack_tests

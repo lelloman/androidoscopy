@@ -1311,7 +1311,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   - Dashboard sends ACTION → App receives and responds
   - App disconnects → Dashboard shows ended
 
-- [ ] **Set up CI job for full stack tests**
+- [x] **Set up CI job for full stack tests**
 
 ---
 
