@@ -709,11 +709,11 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.1 Core Infrastructure
 
-- [ ] **Set up Svelte project with TypeScript**
+- [x] **Set up Svelte project with TypeScript**
 
   Configure Vite, add paths, set up testing.
 
-- [ ] **Define TypeScript types for protocol**
+- [x] **Define TypeScript types for protocol**
   ```typescript
   // src/lib/types.ts
 
@@ -747,7 +747,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   // ... widget types
   ```
 
-- [ ] **Implement WebSocket connection store**
+- [x] **Implement WebSocket connection store**
   ```typescript
   // src/lib/stores/connection.ts
   import { writable } from 'svelte/store';
@@ -765,7 +765,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
   }
   ```
 
-- [ ] **Implement message handling**
+- [x] **Implement message handling**
   ```typescript
   function handleMessage(message: DashboardMessage) {
       switch (message.type) {
@@ -793,7 +793,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.2 JSONPath Evaluation
 
-- [ ] **Implement JSONPath value extraction**
+- [x] **Implement JSONPath value extraction**
   ```typescript
   // src/lib/jsonpath.ts
   import { JSONPath } from 'jsonpath-plus';
@@ -811,7 +811,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.3 Format Functions
 
-- [ ] **Implement format utilities**
+- [x] **Implement format utilities**
   ```typescript
   // src/lib/format.ts
 
@@ -844,7 +844,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 
 ### 4.4 Widget Components
 
-- [ ] **Implement Gauge widget**
+- [x] **Implement Gauge widget**
   ```svelte
   <!-- src/lib/widgets/Gauge.svelte -->
   <script lang="ts">
@@ -1352,7 +1352,7 @@ This document breaks down the DESIGN.md into actionable implementation tasks.
 | 1. Project Setup | 8 | Completed |
 | 2. Server | 22 | Completed |
 | 3. SDK | 28 | Completed |
-| 4. Dashboard | 32 | Not started |
+| 4. Dashboard | 32 | In progress |
 | 5. Integration | 5 | Not started |
 | 6. Documentation | 6 | Not started |
 | **Total** | **101** | |
