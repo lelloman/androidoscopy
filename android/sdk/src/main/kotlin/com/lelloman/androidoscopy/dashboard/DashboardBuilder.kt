@@ -313,6 +313,54 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * Network requests section for HTTP interceptor.
+     * Shows request history with stats and details.
+     * Requires: AndroidoscopyInterceptor added to OkHttpClient and its dataProvider registered.
+     */
+    fun networkRequestsSection() {
+        section("Network Requests") {
+            layout = Layout.STACK
+            fullWidth = true
+            collapsible = true
+
+            row {
+                number(
+                    label = "Total Requests",
+                    dataPath = "\$.network.stats.total_requests"
+                )
+                number(
+                    label = "Success",
+                    dataPath = "\$.network.stats.success_count"
+                )
+                number(
+                    label = "Errors",
+                    dataPath = "\$.network.stats.error_count",
+                    alert = AlertConfig(
+                        condition = AlertCondition.gt("\$.network.stats.error_count", 0),
+                        severity = AlertSeverity.WARNING,
+                        message = "HTTP errors detected"
+                    )
+                )
+                number(
+                    label = "Avg Duration",
+                    dataPath = "\$.network.stats.average_duration_ms",
+                    format = Format.DURATION
+                )
+            }
+
+            table(dataPath = "\$.network.requests") {
+                column("method", "Method")
+                column("host", "Host")
+                column("path", "Path")
+                column("response_code", "Status", Format.NUMBER)
+                column("duration_ms", "Duration", Format.DURATION)
+                column("error", "Error")
+                rowAction("view_details", "Details")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK

@@ -51,7 +51,7 @@
   - Report: timestamp, main thread stack trace, all threads (for deadlocks)
   - Dashboard: `anrSection()` with ANR history and expandable stack traces
   - Config: `enableAnrDetection(thresholdMs = 4000)` in init
-- [ ] **HTTP interceptor**
+- [x] **HTTP interceptor**
   - `AndroidoscopyInterceptor` for OkHttp (user adds to client builder)
   - Captures: method, URL, headers, status, duration, body size, errors
   - Dashboard: `networkRequestsSection()` - table with row action for details
