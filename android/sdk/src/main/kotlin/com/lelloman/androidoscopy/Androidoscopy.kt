@@ -98,6 +98,7 @@ object Androidoscopy {
                 if (hostIp == null) {
                     _connectionState.value = ConnectionState.Error("Could not find service host")
                     isConnecting = false
+                    scheduleReconnect()
                     return@launch
                 }
 
