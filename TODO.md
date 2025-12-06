@@ -87,7 +87,7 @@
   - `AndroidoscopyTree` extends `Timber.Tree`, pipes to `Androidoscopy.log()`
   - Usage: `Timber.plant(AndroidoscopyTree())`
   - Maps Timber priority to Androidoscopy log levels
-- [ ] **LeakCanary integration**
+- [x] **LeakCanary integration**
   - Separate module: `androidoscopy-leakcanary`
   - `AndroidoscopyLeakListener` implements `OnHeapAnalyzedListener`
   - Reports: leak signature, trace, retained count, timestamp

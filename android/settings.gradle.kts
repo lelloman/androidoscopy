@@ -24,4 +24,5 @@ include(":app")
 include(":sdk")
 include(":okhttp")
 include(":timber")
+include(":leakcanary")
  

@@ -612,6 +612,43 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * Memory leaks section for LeakCanary integration.
+     * Displays detected leaks with stack traces.
+     * Requires: LeakDataProvider registered from leakcanary module.
+     */
+    fun leaksSection() {
+        section("Memory Leaks") {
+            layout = Layout.STACK
+            fullWidth = true
+            collapsible = true
+
+            row {
+                number(
+                    label = "Leak Count",
+                    dataPath = "\$.leaks.leak_count",
+                    alert = AlertConfig(
+                        condition = AlertCondition.gt("\$.leaks.leak_count", 0),
+                        severity = AlertSeverity.WARNING,
+                        message = "Memory leaks detected!"
+                    )
+                )
+                text(
+                    label = "Latest Leak",
+                    dataPath = "\$.leaks.latest.short_description"
+                )
+            }
+
+            table(dataPath = "\$.leaks.leaks") {
+                column("timestamp", "Time")
+                column("leaking_object_class", "Class")
+                column("retained_count", "Count", Format.NUMBER)
+                column("retained_heap_bytes", "Size", Format.BYTES)
+                rowAction("view_trace", "View Trace")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK
