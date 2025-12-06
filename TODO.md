@@ -36,9 +36,9 @@
 
 ## 5. Demo App
 
-- [ ] **Create MainActivity** - full SDK integration with all providers
-- [ ] **Add demo custom data** - counter, mock stats, action handlers
-- [ ] **Integrate Timber** - logging demo
+- [x] **Create MainActivity** - full SDK integration with all providers
+- [x] **Add demo custom data** - counter, mock stats, action handlers
+- [x] **Integrate Timber** - logging demo
 
 ---
 
