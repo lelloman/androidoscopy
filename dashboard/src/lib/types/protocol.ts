@@ -49,10 +49,21 @@ export type Widget =
     | LogViewerWidget
     | ChartWidget;
 
+export interface AlertConfig {
+    condition: {
+        path: string;
+        operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
+        value?: unknown;
+    };
+    severity: 'info' | 'warning' | 'critical';
+    message: string;
+}
+
 export interface BaseWidget {
     type: string;
     label?: string;
     visible_when?: VisibleWhen;
+    alert?: AlertConfig;
 }
 
 export interface NumberWidget extends BaseWidget {

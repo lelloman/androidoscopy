@@ -55,6 +55,11 @@
         color: white;
     }
 
+    .toast.warning {
+        background: var(--warning-color, #f59e0b);
+        color: white;
+    }
+
     .toast.info {
         background: var(--primary-color, #3b82f6);
         color: white;

@@ -12,7 +12,7 @@
   - bind_address already configurable (set to 0.0.0.0)
   - UDP discovery already broadcasts for device finding
   - No auth needed (LAN-only is acceptable security model)
-- [ ] **Alert system**
+- [x] **Alert system**
   - Defined in Kotlin DSL (app-side, since no dashboard persistence)
   - Widget-level alert config: threshold condition, severity, message
   - Dashboard displays: visual highlight (red border/glow) + toast notification

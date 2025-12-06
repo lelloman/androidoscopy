@@ -3,7 +3,7 @@ import { writable } from 'svelte/store';
 export interface Toast {
     id: string;
     message: string;
-    type: 'success' | 'error' | 'info';
+    type: 'success' | 'error' | 'warning' | 'info';
     duration: number;
 }
 
@@ -11,7 +11,7 @@ export const toasts = writable<Toast[]>([]);
 
 export function showToast(
     message: string,
-    type: 'success' | 'error' | 'info' = 'info',
+    type: 'success' | 'error' | 'warning' | 'info' = 'info',
     duration?: number
 ) {
     const id = crypto.randomUUID();

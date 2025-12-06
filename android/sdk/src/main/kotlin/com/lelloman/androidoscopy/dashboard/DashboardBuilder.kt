@@ -3,6 +3,7 @@ package com.lelloman.androidoscopy.dashboard
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -259,31 +260,74 @@ enum class BadgeStyle(val value: String) {
     MUTED("muted")
 }
 
+enum class AlertSeverity(val value: String) {
+    INFO("info"),
+    WARNING("warning"),
+    CRITICAL("critical")
+}
+
+data class AlertConfig(
+    val condition: AlertCondition,
+    val severity: AlertSeverity = AlertSeverity.WARNING,
+    val message: String = "Alert triggered"
+)
+
+data class AlertCondition(
+    val path: String,
+    val operator: String,
+    val value: Any? = null
+) {
+    companion object {
+        fun gt(path: String, value: Number) = AlertCondition(path, "gt", value)
+        fun gte(path: String, value: Number) = AlertCondition(path, "gte", value)
+        fun lt(path: String, value: Number) = AlertCondition(path, "lt", value)
+        fun lte(path: String, value: Number) = AlertCondition(path, "lte", value)
+        fun eq(path: String, value: Any) = AlertCondition(path, "eq", value)
+        fun neq(path: String, value: Any) = AlertCondition(path, "neq", value)
+    }
+}
+
 class RowBuilder {
     private val widgets = mutableListOf<JsonElement>()
 
-    fun number(label: String, dataPath: String, format: Format = Format.NUMBER) {
-        widgets.add(WidgetBuilder.number(label, dataPath, format))
+    fun number(
+        label: String,
+        dataPath: String,
+        format: Format = Format.NUMBER,
+        alert: AlertConfig? = null
+    ) {
+        widgets.add(WidgetBuilder.number(label, dataPath, format, alert))
     }
 
-    fun text(label: String, dataPath: String) {
-        widgets.add(WidgetBuilder.text(label, dataPath))
+    fun text(label: String, dataPath: String, alert: AlertConfig? = null) {
+        widgets.add(WidgetBuilder.text(label, dataPath, alert))
     }
 
-    fun bytes(label: String, dataPath: String) {
-        widgets.add(WidgetBuilder.number(label, dataPath, Format.BYTES))
+    fun bytes(label: String, dataPath: String, alert: AlertConfig? = null) {
+        widgets.add(WidgetBuilder.number(label, dataPath, Format.BYTES, alert))
     }
 
-    fun percent(label: String, dataPath: String) {
-        widgets.add(WidgetBuilder.number(label, dataPath, Format.PERCENT))
+    fun percent(label: String, dataPath: String, alert: AlertConfig? = null) {
+        widgets.add(WidgetBuilder.number(label, dataPath, Format.PERCENT, alert))
     }
 
-    fun gauge(label: String, valuePath: String, maxPath: String, format: Format = Format.NUMBER) {
-        widgets.add(WidgetBuilder.gauge(label, valuePath, maxPath, format))
+    fun gauge(
+        label: String,
+        valuePath: String,
+        maxPath: String,
+        format: Format = Format.NUMBER,
+        alert: AlertConfig? = null
+    ) {
+        widgets.add(WidgetBuilder.gauge(label, valuePath, maxPath, format, alert))
     }
 
-    fun badge(label: String, dataPath: String, variants: Map<String, BadgeStyle>) {
-        widgets.add(WidgetBuilder.badge(label, dataPath, variants))
+    fun badge(
+        label: String,
+        dataPath: String,
+        variants: Map<String, BadgeStyle>,
+        alert: AlertConfig? = null
+    ) {
+        widgets.add(WidgetBuilder.badge(label, dataPath, variants, alert))
     }
 
     fun chart(
@@ -291,9 +335,10 @@ class RowBuilder {
         dataPath: String,
         format: Format = Format.NUMBER,
         maxPoints: Int = 60,
-        color: String? = null
+        color: String? = null,
+        alert: AlertConfig? = null
     ) {
-        widgets.add(WidgetBuilder.chart(label, dataPath, format, maxPoints, color))
+        widgets.add(WidgetBuilder.chart(label, dataPath, format, maxPoints, color, alert))
     }
 
     fun build(): List<JsonElement> = widgets
@@ -445,34 +490,58 @@ class ArgsDialogBuilder {
 data class SelectOption(val value: String, val label: String)
 
 object WidgetBuilder {
-    fun number(label: String, dataPath: String, format: Format): JsonElement = buildJsonObject {
+    private fun JsonObjectBuilder.addAlert(alert: AlertConfig?) {
+        alert?.let {
+            put("alert", buildJsonObject {
+                put("condition", buildJsonObject {
+                    put("path", JsonPrimitive(it.condition.path))
+                    put("operator", JsonPrimitive(it.condition.operator))
+                    it.condition.value?.let { v ->
+                        when (v) {
+                            is Number -> put("value", JsonPrimitive(v))
+                            is Boolean -> put("value", JsonPrimitive(v))
+                            else -> put("value", JsonPrimitive(v.toString()))
+                        }
+                    }
+                })
+                put("severity", JsonPrimitive(it.severity.value))
+                put("message", JsonPrimitive(it.message))
+            })
+        }
+    }
+
+    fun number(label: String, dataPath: String, format: Format, alert: AlertConfig? = null): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("number"))
         put("label", JsonPrimitive(label))
         put("data_path", JsonPrimitive(dataPath))
         put("format", JsonPrimitive(format.value))
+        addAlert(alert)
     }
 
-    fun text(label: String, dataPath: String): JsonElement = buildJsonObject {
+    fun text(label: String, dataPath: String, alert: AlertConfig? = null): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("text"))
         put("label", JsonPrimitive(label))
         put("data_path", JsonPrimitive(dataPath))
+        addAlert(alert)
     }
 
-    fun gauge(label: String, valuePath: String, maxPath: String, format: Format): JsonElement = buildJsonObject {
+    fun gauge(label: String, valuePath: String, maxPath: String, format: Format, alert: AlertConfig? = null): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("gauge"))
         put("label", JsonPrimitive(label))
         put("value_path", JsonPrimitive(valuePath))
         put("max_path", JsonPrimitive(maxPath))
         put("format", JsonPrimitive(format.value))
+        addAlert(alert)
     }
 
-    fun badge(label: String, dataPath: String, variants: Map<String, BadgeStyle>): JsonElement = buildJsonObject {
+    fun badge(label: String, dataPath: String, variants: Map<String, BadgeStyle>, alert: AlertConfig? = null): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("badge"))
         put("label", JsonPrimitive(label))
         put("data_path", JsonPrimitive(dataPath))
         put("variants", buildJsonObject {
             variants.forEach { (k, v) -> put(k, JsonPrimitive(v.value)) }
         })
+        addAlert(alert)
     }
 
     fun logViewer(defaultLevel: String = "DEBUG"): JsonElement = buildJsonObject {
@@ -485,7 +554,8 @@ object WidgetBuilder {
         dataPath: String,
         format: Format,
         maxPoints: Int,
-        color: String?
+        color: String?,
+        alert: AlertConfig? = null
     ): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("chart"))
         put("label", JsonPrimitive(label))
@@ -493,5 +563,6 @@ object WidgetBuilder {
         put("format", JsonPrimitive(format.value))
         put("max_points", JsonPrimitive(maxPoints))
         color?.let { put("color", JsonPrimitive(it)) }
+        addAlert(alert)
     }
 }
