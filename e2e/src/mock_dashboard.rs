@@ -15,14 +15,12 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 #[serde(tag = "type")]
 pub enum DashboardMessage {
     #[serde(rename = "ACTION")]
-    Action {
-        session_id: String,
-        payload: ActionPayload,
-    },
+    Action { payload: DashboardActionPayload },
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ActionPayload {
+pub struct DashboardActionPayload {
+    pub session_id: String,
     pub action_id: String,
     pub action: String,
     pub args: Option<Value>,
@@ -35,32 +33,53 @@ pub enum ServerMessage {
     #[serde(rename = "SYNC")]
     Sync { payload: SyncPayload },
     #[serde(rename = "SESSION_STARTED")]
-    SessionStarted { payload: SessionInfo },
+    SessionStarted { payload: SessionStartedPayload },
     #[serde(rename = "SESSION_DATA")]
     SessionData {
-        session_id: String,
-        payload: Value,
+        payload: SessionDataPayload,
         #[allow(dead_code)]
         timestamp: String,
     },
     #[serde(rename = "SESSION_LOG")]
     SessionLog {
-        session_id: String,
-        payload: LogPayload,
+        payload: SessionLogPayload,
         #[allow(dead_code)]
         timestamp: String,
     },
     #[serde(rename = "SESSION_ENDED")]
     SessionEnded {
-        session_id: String,
+        payload: SessionEndedPayload,
         #[allow(dead_code)]
         timestamp: String,
     },
     #[serde(rename = "ACTION_RESULT")]
     ActionResult {
-        session_id: String,
         payload: ActionResultPayload,
+        #[allow(dead_code)]
+        timestamp: String,
     },
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SessionStartedPayload {
+    pub session: SessionInfo,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SessionDataPayload {
+    pub session_id: String,
+    pub data: Value,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SessionLogPayload {
+    pub session_id: String,
+    pub log: LogEntry,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SessionEndedPayload {
+    pub session_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -125,6 +144,7 @@ pub struct LogEntry {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ActionResultPayload {
+    pub session_id: String,
     pub action_id: String,
     pub success: bool,
     pub message: Option<String>,
@@ -224,7 +244,7 @@ impl MockDashboardClient {
             let messages = self.received_messages.lock().await;
             for msg in messages.iter() {
                 if let ServerMessage::SessionStarted { payload } = msg {
-                    return Some(payload.clone());
+                    return Some(payload.session.clone());
                 }
             }
             drop(messages);
@@ -243,14 +263,9 @@ impl MockDashboardClient {
         loop {
             let messages = self.received_messages.lock().await;
             for msg in messages.iter() {
-                if let ServerMessage::SessionData {
-                    session_id: sid,
-                    payload,
-                    ..
-                } = msg
-                {
-                    if sid == session_id {
-                        return Some(payload.clone());
+                if let ServerMessage::SessionData { payload, .. } = msg {
+                    if payload.session_id == session_id {
+                        return Some(payload.data.clone());
                     }
                 }
             }
@@ -268,20 +283,15 @@ impl MockDashboardClient {
         &self,
         session_id: &str,
         timeout_ms: u64,
-    ) -> Option<LogPayload> {
+    ) -> Option<LogEntry> {
         let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_millis(timeout_ms);
 
         loop {
             let messages = self.received_messages.lock().await;
             for msg in messages.iter() {
-                if let ServerMessage::SessionLog {
-                    session_id: sid,
-                    payload,
-                    ..
-                } = msg
-                {
-                    if sid == session_id {
-                        return Some(payload.clone());
+                if let ServerMessage::SessionLog { payload, .. } = msg {
+                    if payload.session_id == session_id {
+                        return Some(payload.log.clone());
                     }
                 }
             }
@@ -301,11 +311,8 @@ impl MockDashboardClient {
         loop {
             let messages = self.received_messages.lock().await;
             for msg in messages.iter() {
-                if let ServerMessage::SessionEnded {
-                    session_id: sid, ..
-                } = msg
-                {
-                    if sid == session_id {
+                if let ServerMessage::SessionEnded { payload, .. } = msg {
+                    if payload.session_id == session_id {
                         return true;
                     }
                 }
@@ -355,8 +362,8 @@ impl MockDashboardClient {
         let action_id = uuid::Uuid::new_v4().to_string();
 
         let msg = DashboardMessage::Action {
-            session_id: session_id.to_string(),
-            payload: ActionPayload {
+            payload: DashboardActionPayload {
+                session_id: session_id.to_string(),
                 action_id: action_id.clone(),
                 action: action.to_string(),
                 args,
@@ -392,8 +399,8 @@ mod tests {
     #[test]
     fn test_action_message_serialization() {
         let msg = DashboardMessage::Action {
-            session_id: "session-1".to_string(),
-            payload: ActionPayload {
+            payload: DashboardActionPayload {
+                session_id: "session-1".to_string(),
                 action_id: "action-1".to_string(),
                 action: "clear_cache".to_string(),
                 args: Some(json!({"type": "all"})),

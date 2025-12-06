@@ -458,8 +458,8 @@ mod tests {
     fn test_parse_dashboard_action() {
         let json = json!({
             "type": "ACTION",
-            "session_id": "session-123",
             "payload": {
+                "session_id": "session-123",
                 "action_id": "act-456",
                 "action": "clear_cache",
                 "args": {
@@ -470,8 +470,8 @@ mod tests {
 
         let msg: DashboardToServiceMessage = serde_json::from_value(json).unwrap();
         match msg {
-            DashboardToServiceMessage::Action { session_id, payload } => {
-                assert_eq!(session_id, "session-123");
+            DashboardToServiceMessage::Action { payload } => {
+                assert_eq!(payload.session_id, "session-123");
                 assert_eq!(payload.action, "clear_cache");
             }
         }

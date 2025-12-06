@@ -419,7 +419,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel(10);
         let register = create_test_register_payload();
 
-        let session_id = manager.create_session(register, tx);
+        let (session_id, _resumed) = manager.create_session(register, tx);
 
         assert!(manager.get_session(&session_id).is_some());
         assert_eq!(manager.session_count(), 1);
@@ -432,7 +432,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel(10);
         let register = create_test_register_payload();
 
-        let session_id = manager.create_session(register, tx);
+        let (session_id, _resumed) = manager.create_session(register, tx);
         manager.end_session(&session_id);
 
         assert_eq!(manager.session_count(), 1);
@@ -446,7 +446,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel(10);
         let register = create_test_register_payload();
 
-        let session_id = manager.create_session(register, tx);
+        let (session_id, _resumed) = manager.create_session(register, tx);
         let result = manager.add_data(&session_id, Utc::now(), json!({ "test": 123 }));
 
         assert!(result);
@@ -469,8 +469,8 @@ mod tests {
         let (tx1, _rx1) = mpsc::channel(10);
         let (tx2, _rx2) = mpsc::channel(10);
 
-        let session1_id = manager.create_session(create_test_register_payload(), tx1);
-        let _session2_id = manager.create_session(create_test_register_payload(), tx2);
+        let (session1_id, _) = manager.create_session(create_test_register_payload(), tx1);
+        let (_session2_id, _) = manager.create_session(create_test_register_payload(), tx2);
 
         manager.end_session(&session1_id);
 
@@ -484,7 +484,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel(10);
         let register = create_test_register_payload();
 
-        let session_id = manager.create_session(register, tx);
+        let (session_id, _resumed) = manager.create_session(register, tx);
         manager.end_session(&session_id);
 
         // Set ended_at to 2 seconds ago
