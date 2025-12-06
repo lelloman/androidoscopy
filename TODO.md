@@ -16,9 +16,9 @@
 
 ## 2. Dashboard Templates
 
-- [ ] **batterySection()** - battery gauge, charging badge, temperature
-- [ ] **storageSection()** - storage gauge, cache size, available space
-- [ ] **threadSection()** - thread count, active threads list
+- [x] **batterySection()** - battery gauge, charging badge, temperature
+- [x] **storageSection()** - storage gauge, cache size, available space
+- [x] **threadSection()** - thread count, active threads list
 
 ## 3. Chart Widget
 

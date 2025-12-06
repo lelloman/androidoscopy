@@ -40,6 +40,74 @@ class DashboardBuilder {
         }
     }
 
+    fun batterySection() {
+        section("Battery") {
+            layout = Layout.ROW
+            row {
+                gauge(
+                    label = "Battery Level",
+                    valuePath = "\$.battery.level",
+                    maxPath = "100",
+                    format = Format.PERCENT
+                )
+                badge(
+                    label = "Status",
+                    dataPath = "\$.battery.status",
+                    variants = mapOf(
+                        "CHARGING" to BadgeStyle.SUCCESS,
+                        "FULL" to BadgeStyle.SUCCESS,
+                        "DISCHARGING" to BadgeStyle.WARNING,
+                        "NOT_CHARGING" to BadgeStyle.MUTED,
+                        "UNKNOWN" to BadgeStyle.MUTED
+                    )
+                )
+                number(
+                    label = "Temperature",
+                    dataPath = "\$.battery.temperature",
+                    format = Format.NUMBER
+                )
+            }
+        }
+    }
+
+    fun storageSection() {
+        section("Storage") {
+            layout = Layout.ROW
+            row {
+                gauge(
+                    label = "Internal Storage",
+                    valuePath = "\$.storage.internal_used_bytes",
+                    maxPath = "\$.storage.internal_total_bytes",
+                    format = Format.BYTES
+                )
+                bytes(
+                    label = "App Data",
+                    dataPath = "\$.storage.app_data_bytes"
+                )
+                bytes(
+                    label = "Cache",
+                    dataPath = "\$.storage.cache_bytes"
+                )
+            }
+        }
+    }
+
+    fun threadSection() {
+        section("Threads") {
+            layout = Layout.ROW
+            row {
+                number(
+                    label = "Active",
+                    dataPath = "\$.threads.active_count"
+                )
+                number(
+                    label = "Total",
+                    dataPath = "\$.threads.total_count"
+                )
+            }
+        }
+    }
+
     fun logsSection() {
         section("Logs") {
             layout = Layout.STACK
