@@ -156,6 +156,7 @@ class DashboardBuilder {
     fun logsSection() {
         section("Logs") {
             layout = Layout.STACK
+            fullWidth = true
             widget = WidgetBuilder.logViewer(defaultLevel = "DEBUG")
         }
     }
@@ -192,6 +193,8 @@ class SectionBuilder(private val title: String) {
     var collapsedDefault: Boolean = false
     var columns: Int? = null
     var widget: JsonElement? = null
+    /** When true, this section spans the full width in flow layout */
+    var fullWidth: Boolean = false
 
     private val widgets = mutableListOf<JsonElement>()
 
@@ -220,6 +223,9 @@ class SectionBuilder(private val title: String) {
         if (collapsible) {
             put("collapsible", JsonPrimitive(true))
             put("collapsed_default", JsonPrimitive(collapsedDefault))
+        }
+        if (fullWidth) {
+            put("full_width", JsonPrimitive(true))
         }
         columns?.let { put("columns", JsonPrimitive(it)) }
 

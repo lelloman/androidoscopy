@@ -34,6 +34,7 @@ export interface Section {
     columns?: number;
     collapsible?: boolean;
     collapsed_default?: boolean;
+    full_width?: boolean;
     widgets?: Widget[];
     widget?: Widget;
 }

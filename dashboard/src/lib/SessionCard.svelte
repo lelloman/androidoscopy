@@ -129,8 +129,13 @@
 
     .sections {
         padding: 1rem;
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         gap: 1rem;
+    }
+
+    /* Let full-width sections like logs span all columns */
+    .sections :global(.section-full-width) {
+        grid-column: 1 / -1;
     }
 </style>

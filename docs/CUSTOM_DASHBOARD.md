@@ -374,14 +374,47 @@ onAction("configure_endpoint") { args ->
 }
 ```
 
+## Section Layout
+
+The dashboard uses a **flow layout** where sections wrap horizontally. On wide screens, multiple sections appear side by side.
+
+### Controlling Section Width
+
+Use `fullWidth = true` to make a section span the entire width:
+
+```kotlin
+dashboard {
+    // These flow side-by-side and wrap
+    memorySection()
+    batterySection()
+    storageSection()
+
+    // This spans full width (good for tables, logs, charts)
+    section("Request Log") {
+        fullWidth = true
+        table(dataPath = "$.requests") {
+            column("url", "URL")
+            column("status", "Status")
+        }
+    }
+
+    // logsSection() is fullWidth by default
+    logsSection()
+}
+```
+
+**Auto full-width:** Sections containing `log_viewer` or `table` widgets automatically span full width.
+
 ## Best Practices
 
 ### 1. Organize Sections Logically
 
 ```kotlin
 dashboard {
-    // Critical metrics first
+    // Critical metrics first (flow side-by-side)
     memorySection()
+    batterySection()
+    storageSection()
 
     // Feature-specific sections
     section("Authentication") { /* ... */ }
@@ -393,7 +426,7 @@ dashboard {
         // ...
     }
 
-    // Logs at the bottom
+    // Full-width sections at the bottom
     logsSection()
 }
 ```

@@ -14,6 +14,14 @@
 
     let collapsed = $state(section.collapsed_default ?? false);
 
+    // Use full_width from schema, or auto-detect for certain widget types
+    let isFullWidth = $derived(
+        section.full_width ||
+        section.layout === 'stack' ||
+        section.widget?.type === 'log_viewer' ||
+        section.widgets?.some(w => w.type === 'log_viewer' || w.type === 'table')
+    );
+
     function toggleCollapse() {
         if (section.collapsible) {
             collapsed = !collapsed;
@@ -21,7 +29,7 @@
     }
 </script>
 
-<div class="section">
+<div class="section" class:section-full-width={isFullWidth}>
     <button
         class="header"
         onclick={toggleCollapse}
