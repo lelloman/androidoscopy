@@ -277,6 +277,42 @@ class DashboardBuilder {
         storageSection()
     }
 
+    /**
+     * ANR (Application Not Responding) detection section.
+     * Displays ANR history with expandable stack traces.
+     * Requires: enableAnrDetection() in config
+     */
+    fun anrSection() {
+        section("ANR Detection") {
+            layout = Layout.STACK
+            fullWidth = true
+            collapsible = true
+
+            row {
+                number(
+                    label = "ANR Count",
+                    dataPath = "\$.anr.count",
+                    alert = AlertConfig(
+                        condition = AlertCondition.gt("\$.anr.count", 0),
+                        severity = AlertSeverity.WARNING,
+                        message = "ANR detected!"
+                    )
+                )
+                text(
+                    label = "Latest ANR",
+                    dataPath = "\$.anr.latest.timestamp"
+                )
+            }
+
+            table(dataPath = "\$.anr.history") {
+                column("timestamp", "Time")
+                column("duration_ms", "Duration (ms)", Format.NUMBER)
+                column("thread_count", "Threads", Format.NUMBER)
+                rowAction("view_trace", "View Trace")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK

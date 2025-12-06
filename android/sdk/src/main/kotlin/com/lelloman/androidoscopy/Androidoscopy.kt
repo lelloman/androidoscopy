@@ -208,6 +208,12 @@ object Androidoscopy {
                         _connectionState.value =
                             ConnectionState.Connected(message.payload.sessionId)
                         isConnecting = false
+
+                        // Register ANR data provider if enabled
+                        config.anrDataProvider?.let { anrProvider ->
+                            dataProviderManager.register(anrProvider)
+                        }
+
                         dataProviderManager.start()
                     }
 

@@ -46,7 +46,7 @@
 
 ## Android SDK
 
-- [ ] **ANR detection**
+- [x] **ANR detection**
   - Watchdog thread pattern: post to main, detect if response >4s
   - Report: timestamp, main thread stack trace, all threads (for deadlocks)
   - Dashboard: `anrSection()` with ANR history and expandable stack traces

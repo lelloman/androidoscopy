@@ -1,5 +1,7 @@
 package com.lelloman.androidoscopy
 
+import com.lelloman.androidoscopy.anr.AnrDataProvider
+import com.lelloman.androidoscopy.anr.AnrWatchdog
 import com.lelloman.androidoscopy.dashboard.DashboardBuilder
 import kotlinx.serialization.json.JsonElement
 
@@ -19,6 +21,12 @@ data class ActionResult(
     }
 }
 
+data class AnrConfig(
+    val enabled: Boolean = true,
+    val thresholdMs: Long = AnrWatchdog.DEFAULT_THRESHOLD_MS,
+    val maxHistory: Int = 10
+)
+
 class AndroidoscopyConfig {
     var appName: String? = null
     var hostIp: String? = null
@@ -27,6 +35,26 @@ class AndroidoscopyConfig {
 
     internal var dashboardSchema: JsonElement? = null
     internal val actionHandlers = mutableMapOf<String, ActionHandler>()
+    internal var anrConfig: AnrConfig? = null
+    internal var anrDataProvider: AnrDataProvider? = null
+
+    /**
+     * Enable ANR (Application Not Responding) detection.
+     *
+     * @param thresholdMs Time in milliseconds to wait for main thread response. Default is 4000ms.
+     * @param maxHistory Maximum number of ANR events to keep in history. Default is 10.
+     */
+    fun enableAnrDetection(
+        thresholdMs: Long = AnrWatchdog.DEFAULT_THRESHOLD_MS,
+        maxHistory: Int = 10
+    ) {
+        anrConfig = AnrConfig(
+            enabled = true,
+            thresholdMs = thresholdMs,
+            maxHistory = maxHistory
+        )
+        anrDataProvider = AnrDataProvider(thresholdMs, maxHistory)
+    }
 
     fun dashboard(block: DashboardBuilder.() -> Unit) {
         val builder = DashboardBuilder()
