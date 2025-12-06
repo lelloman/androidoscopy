@@ -11,6 +11,7 @@
     import SessionCard from './lib/SessionCard.svelte';
     import ToastContainer from './lib/ToastContainer.svelte';
     import ErrorBoundary from './lib/ErrorBoundary.svelte';
+    import FullscreenModal from './lib/FullscreenModal.svelte';
 
     onMount(() => {
         connect();
@@ -70,6 +71,7 @@
 </main>
 
 <ToastContainer />
+<FullscreenModal />
 
 <style>
     :global(:root) {

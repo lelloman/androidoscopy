@@ -3,13 +3,19 @@
     import { formatTime } from '../format';
     import { tick } from 'svelte';
     import { filterLogs, isAtBottom, LOG_LEVELS, downloadLogs, type ExportFormat } from './logViewerLogic';
+    import { openFullscreen } from '../stores/fullscreen';
 
     interface Props {
         logs: LogEntry[];
         defaultLevel?: LogLevel;
+        showExpandButton?: boolean;
     }
 
-    let { logs, defaultLevel = 'DEBUG' }: Props = $props();
+    let { logs, defaultLevel = 'DEBUG', showExpandButton = true }: Props = $props();
+
+    function handleExpand() {
+        openFullscreen('logviewer', { logs, defaultLevel });
+    }
 
     let levelFilter = $state<LogLevel>(defaultLevel);
     let tagFilter = $state('');
@@ -100,6 +106,16 @@
             bind:value={searchFilter}
             aria-label="Search log messages"
         />
+        {#if showExpandButton}
+            <button
+                class="expand-button"
+                onclick={handleExpand}
+                aria-label="Open in fullscreen"
+                title="Open in fullscreen"
+            >
+                ⛶
+            </button>
+        {/if}
         <div class="export-dropdown">
             <button
                 class="export-button"
@@ -188,6 +204,21 @@
 
     .filters input {
         flex: 1;
+    }
+
+    .expand-button {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        background: var(--input-bg, #252525);
+        color: var(--text-color, #fff);
+        font-size: 1rem;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .expand-button:hover {
+        background: var(--surface-hover, #333);
     }
 
     .export-dropdown {

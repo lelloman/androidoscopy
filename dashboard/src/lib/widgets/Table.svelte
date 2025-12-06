@@ -3,14 +3,20 @@
     import { evaluateArrayPath } from '../jsonpath';
     import { formatValue } from '../format';
     import { sendAction } from '../stores/connection';
+    import { openFullscreen } from '../stores/fullscreen';
 
     interface Props {
         widget: TableWidget;
         data: unknown;
         sessionId: string;
+        showExpandButton?: boolean;
     }
 
-    let { widget, data, sessionId }: Props = $props();
+    let { widget, data, sessionId, showExpandButton = true }: Props = $props();
+
+    function handleExpand() {
+        openFullscreen('table', { widget, data, sessionId });
+    }
 
     let rows = $derived(evaluateArrayPath(data, widget.data_path));
     let loadingActions = $state(new Set<string>());
@@ -48,6 +54,18 @@
 </script>
 
 <div class="table-widget">
+    {#if showExpandButton}
+        <div class="table-header">
+            <button
+                class="expand-button"
+                onclick={handleExpand}
+                aria-label="Open in fullscreen"
+                title="Open in fullscreen"
+            >
+                ⛶
+            </button>
+        </div>
+    {/if}
     <div class="table-container">
         <table>
             <thead>
@@ -104,6 +122,31 @@
         background: var(--surface-color, #1e1e1e);
         border-radius: 8px;
         overflow: hidden;
+    }
+
+    .table-header {
+        display: flex;
+        justify-content: flex-end;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--border-color, #333);
+    }
+
+    .expand-button {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        background: var(--surface-color, #1e1e1e);
+        color: var(--text-muted, #888);
+        font-size: 0.875rem;
+        cursor: pointer;
+        line-height: 1;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .expand-button:hover {
+        opacity: 1;
+        color: var(--text-color, #fff);
     }
 
     .table-container {

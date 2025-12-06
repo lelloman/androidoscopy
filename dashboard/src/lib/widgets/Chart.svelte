@@ -3,13 +3,19 @@
     import { evaluateNumberPath } from '../jsonpath';
     import { formatValue } from '../format';
     import { calculateChartPath, getMinMax, type ChartDataPoint } from './chartLogic';
+    import { openFullscreen } from '../stores/fullscreen';
 
     interface Props {
         widget: ChartWidget;
         data: unknown;
+        showExpandButton?: boolean;
     }
 
-    let { widget, data }: Props = $props();
+    let { widget, data, showExpandButton = true }: Props = $props();
+
+    function handleExpand() {
+        openFullscreen('chart', { widget, data });
+    }
 
     let maxPoints = $derived(widget.max_points ?? 60);
     let chartColor = $derived(widget.color ?? '#3b82f6');
@@ -34,7 +40,19 @@
 <div class="chart-widget">
     <div class="header">
         <span class="label">{widget.label}</span>
-        <span class="value">{formattedValue}</span>
+        <div class="header-right">
+            <span class="value">{formattedValue}</span>
+            {#if showExpandButton}
+                <button
+                    class="expand-button"
+                    onclick={handleExpand}
+                    aria-label="Open in fullscreen"
+                    title="Open in fullscreen"
+                >
+                    ⛶
+                </button>
+            {/if}
+        </div>
     </div>
     <div class="chart-container">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -66,8 +84,32 @@
     .header {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         margin-bottom: 0.5rem;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .expand-button {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        background: var(--surface-color, #1e1e1e);
+        color: var(--text-muted, #888);
+        font-size: 0.875rem;
+        cursor: pointer;
+        line-height: 1;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .expand-button:hover {
+        opacity: 1;
+        color: var(--text-color, #fff);
     }
 
     .label {

@@ -30,7 +30,7 @@
 
 ## Dashboard
 
-- [ ] **Full-screen widget mode**
+- [x] **Full-screen widget mode**
   - Expand icon in widget header (LogViewer, Chart, Table only)
   - Modal overlay fills viewport
   - Close via ESC key or click outside
