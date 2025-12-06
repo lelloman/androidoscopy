@@ -11,7 +11,12 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
+            <option value="$PROJECT_DIR$/coil" />
+            <option value="$PROJECT_DIR$/leakcanary" />
+            <option value="$PROJECT_DIR$/okhttp" />
             <option value="$PROJECT_DIR$/sdk" />
+            <option value="$PROJECT_DIR$/timber" />
+            <option value="$PROJECT_DIR$/workmanager" />
           </set>
         </option>
       </GradleProjectSettings>

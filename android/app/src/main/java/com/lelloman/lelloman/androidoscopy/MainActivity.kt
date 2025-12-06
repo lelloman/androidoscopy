@@ -22,21 +22,28 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.lelloman.androidoscopy.Androidoscopy
 import com.lelloman.androidoscopy.ConnectionState
-import com.lelloman.androidoscopy.protocol.LogLevel
 import com.lelloman.lelloman.androidoscopy.ui.theme.AndroidoscopyTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.Request
+import timber.log.Timber
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
@@ -66,6 +73,7 @@ fun DemoScreen(
 ) {
     val connectionState by Androidoscopy.connectionState.collectAsStateWithLifecycle()
     val clickCount by app.clickCount.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier
@@ -82,7 +90,7 @@ fun DemoScreen(
         )
 
         Text(
-            text = "This app showcases all SDK features",
+            text = "Showcasing all SDK features and integrations",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -90,30 +98,172 @@ fun DemoScreen(
         // Connection Status Card
         ConnectionStatusCard(connectionState)
 
-        // Data Providers Section
-        SectionCard(title = "Data Providers") {
+        // Core Data Providers Section
+        SectionCard(title = "Core Data Providers") {
             Text(
-                text = "The SDK automatically collects and sends data from registered providers:",
+                text = "Built-in providers for system metrics:",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
             DataProviderItem("Memory", "Heap usage, native heap, pressure level")
             DataProviderItem("Battery", "Level, status, health, temperature")
-            DataProviderItem("Storage", "Internal/external storage, app data, cache size")
+            DataProviderItem("Storage", "Internal/external storage, app data, cache")
             DataProviderItem("Threads", "Active count, total count, thread details")
             DataProviderItem("Network", "Connection type, WiFi signal, bandwidth")
+            DataProviderItem("ANR Detection", "Watchdog-based ANR detection with stack traces")
+            DataProviderItem("Permissions", "App permissions with grant status")
+            DataProviderItem("Build Info", "App version, SDK levels, git SHA")
         }
 
-        // Custom Data Section
-        SectionCard(title = "Custom Data") {
+        // Integration Modules Section
+        SectionCard(title = "Integration Modules") {
             Text(
-                text = "Apps can send custom data to the dashboard:",
+                text = "Third-party library integrations:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            DataProviderItem("OkHttp", "HTTP request/response monitoring")
+            DataProviderItem("Timber", "Log forwarding to dashboard")
+            DataProviderItem("LeakCanary", "Memory leak detection and reporting")
+            DataProviderItem("WorkManager", "Background job monitoring")
+            DataProviderItem("Coil", "Image cache statistics")
+            DataProviderItem("SharedPreferences", "Preferences viewer/editor")
+            DataProviderItem("SQLite", "Database browser with query execution")
+        }
+
+        // OkHttp Demo
+        SectionCard(title = "Network Requests (OkHttp)") {
+            Text(
+                text = "Make HTTP requests to see them in the dashboard:",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(12.dp))
 
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val request = Request.Builder()
+                                    .url("https://httpbin.org/get")
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("GET request: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Request failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("GET")
+                }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val request = Request.Builder()
+                                    .url("https://httpbin.org/post")
+                                    .post(okhttp3.RequestBody.create(null, "test"))
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("POST request: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Request failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("POST")
+                }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val request = Request.Builder()
+                                    .url("https://httpbin.org/status/404")
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("404 request: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Request failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("404")
+                }
+            }
+        }
+
+        // Coil Demo
+        SectionCard(title = "Image Loading (Coil)") {
+            Text(
+                text = "Load images to populate cache stats:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(app)
+                        .data("https://picsum.photos/100/100?random=${Random.nextInt()}")
+                        .build(),
+                    contentDescription = "Random image",
+                    imageLoader = app.imageLoader,
+                    modifier = Modifier.size(60.dp)
+                )
+                AsyncImage(
+                    model = ImageRequest.Builder(app)
+                        .data("https://picsum.photos/100/100?random=${Random.nextInt()}")
+                        .build(),
+                    contentDescription = "Random image",
+                    imageLoader = app.imageLoader,
+                    modifier = Modifier.size(60.dp)
+                )
+                AsyncImage(
+                    model = ImageRequest.Builder(app)
+                        .data("https://picsum.photos/100/100?random=${Random.nextInt()}")
+                        .build(),
+                    contentDescription = "Random image",
+                    imageLoader = app.imageLoader,
+                    modifier = Modifier.size(60.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    // Load multiple images to fill cache
+                    repeat(5) {
+                        Timber.d("Loading image $it")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Load More Images")
+            }
+        }
+
+        // Custom Data Section
+        SectionCard(title = "Custom Metrics") {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -136,24 +286,10 @@ fun DemoScreen(
             }
         }
 
-        // Actions Section
-        SectionCard(title = "Dashboard Actions") {
-            Text(
-                text = "Actions can be triggered from the web dashboard:",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            DataProviderItem("Force GC", "Triggers garbage collection (in Memory section)")
-            DataProviderItem("Clear Cache", "Clears app cache directories (in Memory section)")
-            DataProviderItem("Reset Counter", "Resets the click counter (custom action)")
-            DataProviderItem("Say Hello", "Returns a greeting message (custom action)")
-        }
-
         // Logging Section
-        SectionCard(title = "Logging") {
+        SectionCard(title = "Logging (Timber)") {
             Text(
-                text = "Send logs to the dashboard at different levels:",
+                text = "All logs via Timber are forwarded to the dashboard:",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -163,22 +299,35 @@ fun DemoScreen(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                LogButton("V", LogLevel.VERBOSE, Color(0xFF9E9E9E), Modifier.weight(1f))
-                LogButton("D", LogLevel.DEBUG, Color(0xFF4CAF50), Modifier.weight(1f))
-                LogButton("I", LogLevel.INFO, Color(0xFF2196F3), Modifier.weight(1f))
-                LogButton("W", LogLevel.WARN, Color(0xFFFF9800), Modifier.weight(1f))
-                LogButton("E", LogLevel.ERROR, Color(0xFFF44336), Modifier.weight(1f))
+                LogButton("V", Color(0xFF9E9E9E), Modifier.weight(1f)) {
+                    Timber.v("Verbose log message")
+                }
+                LogButton("D", Color(0xFF4CAF50), Modifier.weight(1f)) {
+                    Timber.d("Debug log message")
+                }
+                LogButton("I", Color(0xFF2196F3), Modifier.weight(1f)) {
+                    Timber.i("Info log message")
+                }
+                LogButton("W", Color(0xFFFF9800), Modifier.weight(1f)) {
+                    Timber.w("Warning log message")
+                }
+                LogButton("E", Color(0xFFF44336), Modifier.weight(1f)) {
+                    Timber.e("Error log message")
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = {
-                    Androidoscopy.log(
-                        LogLevel.entries.random(),
-                        "DemoApp",
-                        "Random log message #${Random.nextInt(1000)}"
+                    val levels = listOf(
+                        { Timber.v("Random verbose #${Random.nextInt(1000)}") },
+                        { Timber.d("Random debug #${Random.nextInt(1000)}") },
+                        { Timber.i("Random info #${Random.nextInt(1000)}") },
+                        { Timber.w("Random warning #${Random.nextInt(1000)}") },
+                        { Timber.e("Random error #${Random.nextInt(1000)}") }
                     )
+                    levels.random()()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -186,15 +335,26 @@ fun DemoScreen(
             }
         }
 
-        // Dashboard Schema Section
-        SectionCard(title = "Dashboard Configuration") {
+        // Dashboard Actions Section
+        SectionCard(title = "Dashboard Actions") {
             Text(
-                text = "The dashboard layout is defined via a Kotlin DSL:",
+                text = "These actions can be triggered from the web dashboard:",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
+            DataProviderItem("Force GC", "Triggers garbage collection")
+            DataProviderItem("Clear Cache", "Clears app cache directories")
+            DataProviderItem("Reset Counter", "Resets the click counter")
+            DataProviderItem("Trigger ANR", "Blocks main thread for 5 seconds")
+            DataProviderItem("Cancel Work", "Cancel WorkManager jobs")
+            DataProviderItem("Clear Image Cache", "Clear Coil memory/disk cache")
+            DataProviderItem("Execute SQL", "Run queries on the demo database")
+            DataProviderItem("Edit Preferences", "Modify SharedPreferences entries")
+        }
 
+        // Features Summary
+        SectionCard(title = "Dashboard Configuration") {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.small,
@@ -203,17 +363,18 @@ fun DemoScreen(
                 Text(
                     text = """
                         dashboard {
-                            memorySection(includeActions = true)
+                            memorySection()
                             batterySection()
-                            storageSection()
-                            threadSection()
+                            anrSection()
+                            networkRequestsSection()
+                            sharedPreferencesSection()
+                            sqliteSection()
+                            permissionsSection()
+                            buildInfoSection()
+                            leaksSection()
+                            workManagerSection()
+                            coilSection()
                             logsSection()
-
-                            section("Custom") {
-                                row {
-                                    number("Clicks", "$.clicks")
-                                }
-                            }
                         }
                     """.trimIndent(),
                     style = MaterialTheme.typography.bodySmall,
@@ -326,14 +487,12 @@ fun DataProviderItem(name: String, description: String) {
 @Composable
 fun LogButton(
     label: String,
-    level: LogLevel,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     Button(
-        onClick = {
-            Androidoscopy.log(level, "DemoApp", "$label level log message")
-        },
+        onClick = onClick,
         colors = ButtonDefaults.buttonColors(containerColor = color),
         modifier = modifier
     ) {

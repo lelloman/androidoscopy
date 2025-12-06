@@ -51,7 +51,21 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    // Androidoscopy SDK and all integration modules
     implementation(project(":sdk"))
+    implementation(project(":okhttp"))
+    implementation(project(":timber"))
+    implementation(project(":leakcanary"))
+    implementation(project(":workmanager"))
+    implementation(project(":coil"))
+
+    // Libraries for demo features
+    implementation(libs.okhttp)
+    implementation(libs.timber)
+    implementation(libs.leakcanary.android)
+    implementation(libs.workmanager.runtime.ktx)
+    implementation(libs.coil)
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
