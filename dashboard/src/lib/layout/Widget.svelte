@@ -7,6 +7,7 @@
     import BadgeWidget from '../widgets/Badge.svelte';
     import ButtonWidget from '../widgets/Button.svelte';
     import TableWidget from '../widgets/Table.svelte';
+    import ChartWidget from '../widgets/Chart.svelte';
 
     interface Props {
         widget: Widget;
@@ -34,6 +35,8 @@
         <ButtonWidget {widget} {sessionId} />
     {:else if widget.type === 'table'}
         <TableWidget {widget} {data} {sessionId} />
+    {:else if widget.type === 'chart'}
+        <ChartWidget {widget} {data} />
     {:else}
         <div class="unknown-widget">
             Unknown widget type: {widget.type}

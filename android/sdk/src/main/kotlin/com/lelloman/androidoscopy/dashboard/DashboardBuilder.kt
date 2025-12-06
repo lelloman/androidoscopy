@@ -235,6 +235,16 @@ class RowBuilder {
         widgets.add(WidgetBuilder.badge(label, dataPath, variants))
     }
 
+    fun chart(
+        label: String,
+        dataPath: String,
+        format: Format = Format.NUMBER,
+        maxPoints: Int = 60,
+        color: String? = null
+    ) {
+        widgets.add(WidgetBuilder.chart(label, dataPath, format, maxPoints, color))
+    }
+
     fun build(): List<JsonElement> = widgets
 }
 
@@ -417,5 +427,20 @@ object WidgetBuilder {
     fun logViewer(defaultLevel: String = "DEBUG"): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("log_viewer"))
         put("default_level", JsonPrimitive(defaultLevel))
+    }
+
+    fun chart(
+        label: String,
+        dataPath: String,
+        format: Format,
+        maxPoints: Int,
+        color: String?
+    ): JsonElement = buildJsonObject {
+        put("type", JsonPrimitive("chart"))
+        put("label", JsonPrimitive(label))
+        put("data_path", JsonPrimitive(dataPath))
+        put("format", JsonPrimitive(format.value))
+        put("max_points", JsonPrimitive(maxPoints))
+        color?.let { put("color", JsonPrimitive(it)) }
     }
 }

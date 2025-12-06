@@ -45,7 +45,8 @@ export type Widget =
     | BadgeWidget
     | TableWidget
     | ButtonWidget
-    | LogViewerWidget;
+    | LogViewerWidget
+    | ChartWidget;
 
 export interface BaseWidget {
     type: string;
@@ -163,6 +164,15 @@ export type LogLevel = 'VERBOSE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 export interface LogViewerWidget extends BaseWidget {
     type: 'log_viewer';
     default_level?: LogLevel;
+}
+
+export interface ChartWidget extends BaseWidget {
+    type: 'chart';
+    label: string;
+    data_path: string;
+    format?: 'number' | 'bytes' | 'percent';
+    max_points?: number;
+    color?: string;
 }
 
 export interface VisibleWhen {

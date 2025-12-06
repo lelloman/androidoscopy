@@ -22,11 +22,11 @@
 
 ## 3. Chart Widget
 
-- [ ] **Define chart widget schema** - time-series visualization
-- [ ] **Add chart() to SDK DSL** - RowBuilder method
-- [ ] **Implement Chart.svelte** - canvas-based line chart
-- [ ] **Add chart to Widget dispatcher**
-- [ ] **Write component tests for Chart**
+- [x] **Define chart widget schema** - time-series visualization
+- [x] **Add chart() to SDK DSL** - RowBuilder method
+- [x] **Implement Chart.svelte** - canvas-based line chart
+- [x] **Add chart to Widget dispatcher**
+- [x] **Write component tests for Chart**
 
 ## 4. Built-in Actions
 
