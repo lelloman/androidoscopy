@@ -62,7 +62,7 @@
   - Dashboard: `sharedPreferencesSection()` or `sharedPreferencesSection("name")`
   - Table with key/value/type columns, row actions for edit/delete
   - Refresh button in section header
-- [ ] **SQLite browser**
+- [x] **SQLite browser**
   - List all databases, tables, show schema (columns, types, constraints)
   - Browse: paginated table view, sort by column
   - Raw SQL: input field, run any query (SELECT, INSERT, UPDATE, DELETE)

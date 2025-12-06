@@ -423,6 +423,102 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * SQLite browser section.
+     * Displays database tables with schema view, data browsing, and query execution.
+     * Requires: SqliteDataProvider registered with action handlers.
+     *
+     * @param dbName Optional specific database to show. If null, shows all databases.
+     */
+    fun sqliteSection(dbName: String? = null) {
+        val dataKey = if (dbName != null) "sqlite_$dbName" else "sqlite"
+        section("SQLite" + (dbName?.let { " ($it)" } ?: "")) {
+            layout = Layout.STACK
+            fullWidth = true
+            collapsible = true
+
+            row {
+                number(
+                    label = "Databases",
+                    dataPath = "\$.$dataKey.database_count"
+                )
+                text(
+                    label = "Selected DB",
+                    dataPath = "\$.$dataKey.selected_database"
+                )
+                number(
+                    label = "Tables",
+                    dataPath = "\$.$dataKey.table_count"
+                )
+                text(
+                    label = "Selected Table",
+                    dataPath = "\$.$dataKey.selected_table"
+                )
+            }
+
+            row {
+                number(
+                    label = "Columns",
+                    dataPath = "\$.$dataKey.column_count"
+                )
+                number(
+                    label = "Total Rows",
+                    dataPath = "\$.$dataKey.row_count"
+                )
+                number(
+                    label = "Page",
+                    dataPath = "\$.$dataKey.current_page"
+                )
+                number(
+                    label = "Total Pages",
+                    dataPath = "\$.$dataKey.total_pages"
+                )
+            }
+
+            actions {
+                button(
+                    label = "Refresh",
+                    action = "sqlite_refresh",
+                    style = ButtonStyle.SECONDARY
+                )
+                button(
+                    label = "Run Query",
+                    action = "sqlite_query",
+                    style = ButtonStyle.PRIMARY
+                ) {
+                    title = "Execute SQL Query"
+                    textField("query", "SQL Query", "SELECT * FROM ")
+                }
+                button(
+                    label = "Previous",
+                    action = "sqlite_prev_page",
+                    style = ButtonStyle.SECONDARY
+                )
+                button(
+                    label = "Next",
+                    action = "sqlite_next_page",
+                    style = ButtonStyle.SECONDARY
+                )
+            }
+
+            // Schema table
+            table(dataPath = "\$.$dataKey.schema") {
+                column("name", "Column")
+                column("type", "Type")
+                column("notnull", "Not Null")
+                column("pk", "Primary Key")
+                column("default_value", "Default")
+            }
+
+            // Data table - dynamic columns based on selected table
+            table(dataPath = "\$.$dataKey.data") {
+                // Note: columns will be dynamically determined by the dashboard
+                // based on the actual data returned
+                rowAction("sqlite_delete", "Delete")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK
