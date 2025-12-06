@@ -315,7 +315,7 @@ class DashboardBuilder {
 
     /**
      * Network requests section for HTTP interceptor.
-     * Shows request history with stats and details.
+     * Shows request history with filtering, stats and expandable details.
      * Requires: AndroidoscopyInterceptor added to OkHttpClient and its dataProvider registered.
      */
     fun networkRequestsSection() {
@@ -323,41 +323,7 @@ class DashboardBuilder {
             layout = Layout.STACK
             fullWidth = true
             collapsible = true
-
-            row {
-                number(
-                    label = "Total Requests",
-                    dataPath = "\$.network.stats.total_requests"
-                )
-                number(
-                    label = "Success",
-                    dataPath = "\$.network.stats.success_count"
-                )
-                number(
-                    label = "Errors",
-                    dataPath = "\$.network.stats.error_count",
-                    alert = AlertConfig(
-                        condition = AlertCondition.gt("\$.network.stats.error_count", 0),
-                        severity = AlertSeverity.WARNING,
-                        message = "HTTP errors detected"
-                    )
-                )
-                number(
-                    label = "Avg Duration",
-                    dataPath = "\$.network.stats.average_duration_ms",
-                    format = Format.DURATION
-                )
-            }
-
-            table(dataPath = "\$.network.requests") {
-                column("method", "Method")
-                column("host", "Host")
-                column("path", "Path")
-                column("response_code", "Status", Format.NUMBER)
-                column("duration_ms", "Duration", Format.DURATION)
-                column("error", "Error")
-                rowAction("view_details", "Details")
-            }
+            networkRequestViewer(dataPath = "\$.network.requests")
         }
     }
 
@@ -824,6 +790,10 @@ class SectionBuilder(private val title: String) {
         widgets.addAll(builder.build())
     }
 
+    fun networkRequestViewer(dataPath: String) {
+        widgets.add(WidgetBuilder.networkRequestViewer(dataPath))
+    }
+
     fun build(): JsonElement = buildJsonObject {
         put("id", JsonPrimitive(title.lowercase().replace(" ", "_")))
         put("title", JsonPrimitive(title))
@@ -1154,6 +1124,11 @@ object WidgetBuilder {
     fun logViewer(defaultLevel: String = "DEBUG"): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("log_viewer"))
         put("default_level", JsonPrimitive(defaultLevel))
+    }
+
+    fun networkRequestViewer(dataPath: String): JsonElement = buildJsonObject {
+        put("type", JsonPrimitive("network_request_viewer"))
+        put("data_path", JsonPrimitive(dataPath))
     }
 
     fun chart(

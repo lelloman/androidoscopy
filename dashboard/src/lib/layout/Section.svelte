@@ -1,7 +1,8 @@
 <script lang="ts">
-    import type { Section, LogEntry } from '../types/protocol';
+    import type { Section, LogEntry, NetworkRequestViewerWidget } from '../types/protocol';
     import Widget from './Widget.svelte';
     import LogViewer from '../widgets/LogViewer.svelte';
+    import NetworkRequestViewer from '../widgets/NetworkRequestViewer.svelte';
 
     interface Props {
         section: Section;
@@ -19,7 +20,8 @@
         section.full_width ||
         section.layout === 'stack' ||
         section.widget?.type === 'log_viewer' ||
-        section.widgets?.some(w => w.type === 'log_viewer' || w.type === 'table')
+        section.widget?.type === 'network_request_viewer' ||
+        section.widgets?.some(w => w.type === 'log_viewer' || w.type === 'table' || w.type === 'network_request_viewer')
     );
 
     function toggleCollapse() {
@@ -49,6 +51,8 @@
             {#if section.widget}
                 {#if section.widget.type === 'log_viewer'}
                     <LogViewer {logs} defaultLevel={section.widget.default_level} />
+                {:else if section.widget.type === 'network_request_viewer'}
+                    <NetworkRequestViewer widget={section.widget as NetworkRequestViewerWidget} {data} {sessionId} />
                 {:else}
                     <Widget widget={section.widget} {data} {sessionId} />
                 {/if}
@@ -56,6 +60,8 @@
                 {#each section.widgets as widget}
                     {#if widget.type === 'log_viewer'}
                         <LogViewer {logs} defaultLevel={widget.default_level} />
+                    {:else if widget.type === 'network_request_viewer'}
+                        <NetworkRequestViewer widget={widget as NetworkRequestViewerWidget} {data} {sessionId} />
                     {:else}
                         <Widget {widget} {data} {sessionId} />
                     {/if}

@@ -1,9 +1,10 @@
 <script lang="ts">
     import { fullscreenWidget, closeFullscreen } from './stores/fullscreen';
-    import type { LogEntry, ChartWidget as ChartWidgetType, TableWidget as TableWidgetType } from './types/protocol';
+    import type { LogEntry, ChartWidget as ChartWidgetType, TableWidget as TableWidgetType, NetworkRequestViewerWidget as NetworkRequestViewerWidgetType } from './types/protocol';
     import LogViewer from './widgets/LogViewer.svelte';
     import Chart from './widgets/Chart.svelte';
     import Table from './widgets/Table.svelte';
+    import NetworkRequestViewer from './widgets/NetworkRequestViewer.svelte';
 
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Escape' && $fullscreenWidget.isOpen) {
@@ -58,6 +59,15 @@
                 <div class="widget-container table-fullscreen">
                     <Table
                         widget={$fullscreenWidget.props.widget as TableWidgetType}
+                        data={$fullscreenWidget.props.data}
+                        sessionId={$fullscreenWidget.props.sessionId as string}
+                        showExpandButton={false}
+                    />
+                </div>
+            {:else if $fullscreenWidget.widgetType === 'network_request_viewer'}
+                <div class="widget-container network-fullscreen">
+                    <NetworkRequestViewer
+                        widget={$fullscreenWidget.props.widget as NetworkRequestViewerWidgetType}
                         data={$fullscreenWidget.props.data}
                         sessionId={$fullscreenWidget.props.sessionId as string}
                         showExpandButton={false}
@@ -152,5 +162,17 @@
     .table-fullscreen :global(.table-container) {
         flex: 1;
         overflow: auto;
+    }
+
+    .network-fullscreen :global(.network-viewer) {
+        height: 100%;
+    }
+
+    .network-fullscreen :global(.request-list) {
+        flex: 1;
+    }
+
+    .network-fullscreen :global(.request-detail) {
+        max-height: 40%;
     }
 </style>

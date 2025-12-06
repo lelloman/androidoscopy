@@ -47,7 +47,8 @@ export type Widget =
     | TableWidget
     | ButtonWidget
     | LogViewerWidget
-    | ChartWidget;
+    | ChartWidget
+    | NetworkRequestViewerWidget;
 
 export interface AlertConfig {
     condition: {
@@ -185,6 +186,29 @@ export interface ChartWidget extends BaseWidget {
     format?: 'number' | 'bytes' | 'percent';
     max_points?: number;
     color?: string;
+}
+
+export interface NetworkRequestViewerWidget extends BaseWidget {
+    type: 'network_request_viewer';
+    data_path: string;
+}
+
+export interface NetworkRequest {
+    id: string;
+    timestamp: string;
+    method: string;
+    url: string;
+    path: string;
+    host: string;
+    response_code: number;
+    duration_ms: number;
+    error?: string;
+    request_headers: string;
+    response_headers: string;
+    request_body?: string;
+    response_body?: string;
+    is_success: boolean;
+    is_error: boolean;
 }
 
 export interface VisibleWhen {
