@@ -2,7 +2,7 @@
 
 ## General Features
 
-- [ ] **Logs export**
+- [x] **Logs export**
   - Export button in LogViewer widget
   - Format options: Plain text, JSON, CSV, Logcat format
   - Exports currently buffered logs (respects active filters)

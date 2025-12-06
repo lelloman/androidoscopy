@@ -115,7 +115,7 @@ fn default_data_buffer_size() -> usize {
 }
 
 fn default_log_buffer_size() -> usize {
-    5000
+    50000
 }
 
 fn default_log_level() -> String {

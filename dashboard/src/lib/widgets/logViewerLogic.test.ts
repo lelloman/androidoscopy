@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterLogs, isAtBottom, LOG_LEVELS, type LogFilterOptions } from './logViewerLogic';
+import { filterLogs, isAtBottom, LOG_LEVELS, exportLogs, getExportExtension, getExportMimeType, type LogFilterOptions, type ExportFormat } from './logViewerLogic';
 import type { LogEntry, LogLevel } from '../types/protocol';
 
 function createLog(
@@ -241,5 +241,128 @@ describe('LOG_LEVELS', () => {
 
     it('has 5 log levels', () => {
         expect(LOG_LEVELS).toHaveLength(5);
+    });
+});
+
+describe('exportLogs', () => {
+    const sampleLogs: LogEntry[] = [
+        { timestamp: '2024-01-15T10:30:00.123Z', level: 'INFO', message: 'Hello world', tag: 'App' },
+        { timestamp: '2024-01-15T10:30:01.456Z', level: 'ERROR', message: 'Something failed', tag: 'Network', throwable: 'java.lang.Exception' },
+    ];
+
+    describe('text format', () => {
+        it('formats logs as plain text', () => {
+            const result = exportLogs(sampleLogs, 'text');
+            expect(result).toContain('[2024-01-15T10:30:00.123Z] INFO App: Hello world');
+            expect(result).toContain('[2024-01-15T10:30:01.456Z] ERROR Network: Something failed');
+            expect(result).toContain('java.lang.Exception');
+        });
+
+        it('handles missing tag', () => {
+            const logs: LogEntry[] = [{ timestamp: '2024-01-15T10:30:00.000Z', level: 'DEBUG', message: 'Test' }];
+            const result = exportLogs(logs, 'text');
+            expect(result).toContain('DEBUG -: Test');
+        });
+    });
+
+    describe('json format', () => {
+        it('exports valid JSON', () => {
+            const result = exportLogs(sampleLogs, 'json');
+            const parsed = JSON.parse(result);
+            expect(parsed).toHaveLength(2);
+            expect(parsed[0].message).toBe('Hello world');
+        });
+
+        it('preserves all fields', () => {
+            const result = exportLogs(sampleLogs, 'json');
+            const parsed = JSON.parse(result);
+            expect(parsed[1].throwable).toBe('java.lang.Exception');
+        });
+    });
+
+    describe('csv format', () => {
+        it('includes header row', () => {
+            const result = exportLogs(sampleLogs, 'csv');
+            const lines = result.split('\n');
+            expect(lines[0]).toBe('timestamp,level,tag,message,throwable');
+        });
+
+        it('exports data rows', () => {
+            const result = exportLogs(sampleLogs, 'csv');
+            const lines = result.split('\n');
+            expect(lines).toHaveLength(3); // header + 2 logs
+        });
+
+        it('escapes commas in message', () => {
+            const logs: LogEntry[] = [{ timestamp: '2024-01-15T10:30:00.000Z', level: 'INFO', message: 'Hello, world', tag: 'App' }];
+            const result = exportLogs(logs, 'csv');
+            expect(result).toContain('"Hello, world"');
+        });
+
+        it('escapes quotes in message', () => {
+            const logs: LogEntry[] = [{ timestamp: '2024-01-15T10:30:00.000Z', level: 'INFO', message: 'Said "hello"', tag: 'App' }];
+            const result = exportLogs(logs, 'csv');
+            expect(result).toContain('"Said ""hello"""');
+        });
+    });
+
+    describe('logcat format', () => {
+        it('formats as Android logcat style', () => {
+            const logs: LogEntry[] = [{ timestamp: '2024-06-15T14:30:45.123Z', level: 'INFO', message: 'Test', tag: 'MyApp' }];
+            const result = exportLogs(logs, 'logcat');
+            expect(result).toMatch(/^\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} I\/MyApp: Test$/);
+        });
+
+        it('uses level first character', () => {
+            const logs: LogEntry[] = [
+                { timestamp: '2024-01-15T10:00:00.000Z', level: 'VERBOSE', message: 'v', tag: 'T' },
+                { timestamp: '2024-01-15T10:00:00.000Z', level: 'DEBUG', message: 'd', tag: 'T' },
+                { timestamp: '2024-01-15T10:00:00.000Z', level: 'INFO', message: 'i', tag: 'T' },
+                { timestamp: '2024-01-15T10:00:00.000Z', level: 'WARN', message: 'w', tag: 'T' },
+                { timestamp: '2024-01-15T10:00:00.000Z', level: 'ERROR', message: 'e', tag: 'T' },
+            ];
+            const result = exportLogs(logs, 'logcat');
+            expect(result).toContain('V/T: v');
+            expect(result).toContain('D/T: d');
+            expect(result).toContain('I/T: i');
+            expect(result).toContain('W/T: w');
+            expect(result).toContain('E/T: e');
+        });
+
+        it('handles missing tag', () => {
+            const logs: LogEntry[] = [{ timestamp: '2024-01-15T10:00:00.000Z', level: 'INFO', message: 'Test' }];
+            const result = exportLogs(logs, 'logcat');
+            expect(result).toContain('I/unknown: Test');
+        });
+
+        it('includes throwable on new line', () => {
+            const result = exportLogs(sampleLogs, 'logcat');
+            expect(result).toContain('\njava.lang.Exception');
+        });
+    });
+
+    it('handles empty log array', () => {
+        expect(exportLogs([], 'text')).toBe('');
+        expect(exportLogs([], 'json')).toBe('[]');
+        expect(exportLogs([], 'csv')).toBe('timestamp,level,tag,message,throwable');
+        expect(exportLogs([], 'logcat')).toBe('');
+    });
+});
+
+describe('getExportExtension', () => {
+    it('returns correct extensions', () => {
+        expect(getExportExtension('text')).toBe('txt');
+        expect(getExportExtension('json')).toBe('json');
+        expect(getExportExtension('csv')).toBe('csv');
+        expect(getExportExtension('logcat')).toBe('log');
+    });
+});
+
+describe('getExportMimeType', () => {
+    it('returns correct MIME types', () => {
+        expect(getExportMimeType('text')).toBe('text/plain');
+        expect(getExportMimeType('json')).toBe('application/json');
+        expect(getExportMimeType('csv')).toBe('text/csv');
+        expect(getExportMimeType('logcat')).toBe('text/plain');
     });
 });

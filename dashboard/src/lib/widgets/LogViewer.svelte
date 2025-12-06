@@ -2,7 +2,7 @@
     import type { LogEntry, LogLevel } from '../types/protocol';
     import { formatTime } from '../format';
     import { tick } from 'svelte';
-    import { filterLogs, isAtBottom, LOG_LEVELS } from './logViewerLogic';
+    import { filterLogs, isAtBottom, LOG_LEVELS, downloadLogs, type ExportFormat } from './logViewerLogic';
 
     interface Props {
         logs: LogEntry[];
@@ -17,6 +17,27 @@
     let autoScroll = $state(true);
     let container: HTMLElement | null = $state(null);
     let expandedEntries = $state(new Set<number>());
+    let showExportMenu = $state(false);
+
+    const exportFormats: { value: ExportFormat; label: string }[] = [
+        { value: 'text', label: 'Plain Text (.txt)' },
+        { value: 'json', label: 'JSON (.json)' },
+        { value: 'csv', label: 'CSV (.csv)' },
+        { value: 'logcat', label: 'Logcat (.log)' },
+    ];
+
+    function handleExport(format: ExportFormat) {
+        downloadLogs(filteredLogs, format);
+        showExportMenu = false;
+    }
+
+    function toggleExportMenu() {
+        showExportMenu = !showExportMenu;
+    }
+
+    function closeExportMenu() {
+        showExportMenu = false;
+    }
 
     let filteredLogs = $derived(
         filterLogs(logs, { levelFilter, tagFilter, searchFilter })
@@ -79,6 +100,29 @@
             bind:value={searchFilter}
             aria-label="Search log messages"
         />
+        <div class="export-dropdown">
+            <button
+                class="export-button"
+                onclick={toggleExportMenu}
+                aria-label="Export logs"
+                aria-expanded={showExportMenu}
+            >
+                Export ▾
+            </button>
+            {#if showExportMenu}
+                <div class="export-menu" role="menu">
+                    {#each exportFormats as format}
+                        <button
+                            class="export-option"
+                            role="menuitem"
+                            onclick={() => handleExport(format.value)}
+                        >
+                            {format.label}
+                        </button>
+                    {/each}
+                </div>
+            {/if}
+        </div>
     </div>
 
     <div
@@ -144,6 +188,62 @@
 
     .filters input {
         flex: 1;
+    }
+
+    .export-dropdown {
+        position: relative;
+    }
+
+    .export-button {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        background: var(--input-bg, #252525);
+        color: var(--text-color, #fff);
+        font-size: 0.875rem;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .export-button:hover {
+        background: var(--surface-hover, #333);
+    }
+
+    .export-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: var(--surface-color, #1e1e1e);
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 100;
+        min-width: 150px;
+    }
+
+    .export-option {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: none;
+        background: transparent;
+        color: var(--text-color, #fff);
+        font-size: 0.875rem;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .export-option:hover {
+        background: var(--surface-hover, #333);
+    }
+
+    .export-option:first-child {
+        border-radius: 4px 4px 0 0;
+    }
+
+    .export-option:last-child {
+        border-radius: 0 0 4px 4px;
     }
 
     .logs {
