@@ -519,6 +519,58 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * Permissions section.
+     * Displays declared app permissions with grant status and protection level.
+     * Requires: PermissionsDataProvider registered.
+     */
+    fun permissionsSection() {
+        section("Permissions") {
+            layout = Layout.STACK
+            fullWidth = true
+            collapsible = true
+
+            row {
+                number(
+                    label = "Total",
+                    dataPath = "\$.permissions.total_count"
+                )
+                number(
+                    label = "Granted",
+                    dataPath = "\$.permissions.granted_count"
+                )
+                number(
+                    label = "Denied",
+                    dataPath = "\$.permissions.denied_count",
+                    alert = AlertConfig(
+                        condition = AlertCondition.gt("\$.permissions.denied_count", 0),
+                        severity = AlertSeverity.INFO,
+                        message = "Some permissions are denied"
+                    )
+                )
+                number(
+                    label = "Dangerous",
+                    dataPath = "\$.permissions.dangerous_count"
+                )
+            }
+
+            actions {
+                button(
+                    label = "Refresh",
+                    action = "permissions_refresh",
+                    style = ButtonStyle.SECONDARY
+                )
+            }
+
+            table(dataPath = "\$.permissions.permissions") {
+                column("label", "Permission")
+                column("status", "Status")
+                column("protection_level", "Level")
+                column("group", "Group")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK

@@ -69,7 +69,7 @@
   - Edit: row actions for edit/delete, insert new row
   - Dashboard: `sqliteSection()` or `sqliteSection("db_name.db")`
   - UI: database/table dropdowns, schema view, query input, results table
-- [ ] **Permission checker**
+- [x] **Permission checker**
   - List declared permissions with grant status (granted/denied badge)
   - Show dangerous vs normal distinction
   - Refresh: on app resume (lifecycle-aware) + manual refresh button
