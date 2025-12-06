@@ -362,12 +362,12 @@ class DashboardBuilderTest {
         val widgets = section?.get("widgets")?.jsonArray
         assertNotNull(widgets)
 
-        // Should have stats numbers and a table
-        val table = widgets?.firstOrNull {
-            it.jsonObject["type"]?.jsonPrimitive?.content == "table"
+        // Should have a network_request_viewer widget
+        val viewer = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "network_request_viewer"
         }?.jsonObject
-        assertNotNull(table)
-        assertEquals("\$.network.requests", table?.get("data_path")?.jsonPrimitive?.content)
+        assertNotNull(viewer)
+        assertEquals("\$.network.requests", viewer?.get("data_path")?.jsonPrimitive?.content)
     }
 
     @Test
