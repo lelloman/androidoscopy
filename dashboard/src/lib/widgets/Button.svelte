@@ -100,18 +100,26 @@
     }
 
     .button-widget {
-        padding: 0.5rem 1rem;
-        border: none;
+        padding: 0.5rem 1rem !important;
+        border: none !important;
         border-radius: 6px;
-        font-size: 0.875rem;
+        font-size: 0.875rem !important;
         font-weight: 500;
+        line-height: 1 !important;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: background 0.2s;
         min-width: 80px;
+        height: 36px !important;
+        box-sizing: border-box !important;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
+        outline: none !important;
+    }
+
+    .button-widget:hover {
+        border: none !important;
     }
 
     .button-widget.primary {
@@ -121,16 +129,18 @@
 
     .button-widget.primary:hover:not(:disabled) {
         background: #2563eb;
+        border: none !important;
     }
 
     .button-widget.secondary {
         background: var(--surface-color, #333);
         color: var(--text-color, #fff);
-        border: 1px solid var(--border-color, #444);
+        border: 1px solid var(--border-color, #444) !important;
     }
 
     .button-widget.secondary:hover:not(:disabled) {
         background: #404040;
+        border: 1px solid var(--border-color, #444) !important;
     }
 
     .button-widget.danger {
@@ -140,11 +150,25 @@
 
     .button-widget.danger:hover:not(:disabled) {
         background: #dc2626;
+        border: none !important;
     }
 
     .button-widget:disabled {
         opacity: 0.7;
         cursor: not-allowed;
+    }
+
+    .button-widget:focus {
+        outline: none;
+    }
+
+    .button-widget:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    }
+
+    .button-widget:active:not(:disabled) {
+        transform: scale(1);
     }
 
     .button-widget.success {
