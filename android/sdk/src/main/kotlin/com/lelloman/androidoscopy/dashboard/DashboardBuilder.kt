@@ -16,7 +16,7 @@ class DashboardBuilder {
         sections.add(builder.build())
     }
 
-    fun memorySection() {
+    fun memorySection(includeActions: Boolean = false) {
         section("Memory") {
             layout = Layout.ROW
             row {
@@ -36,6 +36,20 @@ class DashboardBuilder {
                         "CRITICAL" to BadgeStyle.DANGER
                     )
                 )
+            }
+            if (includeActions) {
+                actions {
+                    button(
+                        label = "Force GC",
+                        action = "force_gc",
+                        style = ButtonStyle.SECONDARY
+                    )
+                    button(
+                        label = "Clear Cache",
+                        action = "clear_cache",
+                        style = ButtonStyle.SECONDARY
+                    )
+                }
             }
         }
     }

@@ -30,9 +30,9 @@
 
 ## 4. Built-in Actions
 
-- [ ] **Force GC action** - built-in handler calling System.gc()
-- [ ] **Clear Caches action** - clear app cache directory
-- [ ] **Add actions to memorySection()** - GC button
+- [x] **Force GC action** - built-in handler calling System.gc()
+- [x] **Clear Caches action** - clear app cache directory
+- [x] **Add actions to memorySection()** - GC button
 
 ## 5. Demo App
 
