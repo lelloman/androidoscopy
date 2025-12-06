@@ -23,4 +23,5 @@ rootProject.name = "Androidoscopy"
 include(":app")
 include(":sdk")
 include(":okhttp")
+include(":timber")
  

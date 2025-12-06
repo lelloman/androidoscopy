@@ -82,7 +82,7 @@
 
 ## Integration Modules (separate modules)
 
-- [ ] **Timber integration**
+- [x] **Timber integration**
   - Separate module: `androidoscopy-timber`
   - `AndroidoscopyTree` extends `Timber.Tree`, pipes to `Androidoscopy.log()`
   - Usage: `Timber.plant(AndroidoscopyTree())`
