@@ -92,7 +92,7 @@
   - `AndroidoscopyLeakListener` implements `OnHeapAnalyzedListener`
   - Reports: leak signature, trace, retained count, timestamp
   - Dashboard: `leaksSection()` - list with expandable trace details
-- [ ] **WorkManager viewer**
+- [x] **WorkManager viewer**
   - Separate module: `androidoscopy-workmanager`
   - Reactive via `WorkManager.getWorkInfosFlow()` - no polling
   - Shows: worker class, state badge, tags, constraints, attempt count, next run time

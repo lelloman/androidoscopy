@@ -649,6 +649,64 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * WorkManager section.
+     * Displays scheduled/running workers with status and cancel actions.
+     * Requires: WorkManagerDataProvider registered from workmanager module.
+     */
+    fun workManagerSection() {
+        section("WorkManager") {
+            layout = Layout.STACK
+            fullWidth = true
+            collapsible = true
+
+            row {
+                number(
+                    label = "Total",
+                    dataPath = "\$.workmanager.worker_count"
+                )
+                number(
+                    label = "Running",
+                    dataPath = "\$.workmanager.running_count"
+                )
+                number(
+                    label = "Enqueued",
+                    dataPath = "\$.workmanager.enqueued_count"
+                )
+                number(
+                    label = "Failed",
+                    dataPath = "\$.workmanager.failed_count",
+                    alert = AlertConfig(
+                        condition = AlertCondition.gt("\$.workmanager.failed_count", 0),
+                        severity = AlertSeverity.WARNING,
+                        message = "Failed workers detected"
+                    )
+                )
+            }
+
+            actions {
+                button(
+                    label = "Refresh",
+                    action = "workmanager_refresh",
+                    style = ButtonStyle.SECONDARY
+                )
+                button(
+                    label = "Cancel All",
+                    action = "workmanager_cancel_all",
+                    style = ButtonStyle.DANGER
+                )
+            }
+
+            table(dataPath = "\$.workmanager.workers") {
+                column("tags_str", "Tags")
+                column("state", "State")
+                column("attempt_count", "Attempts", Format.NUMBER)
+                column("stop_reason", "Stop Reason")
+                rowAction("workmanager_cancel", "Cancel")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK

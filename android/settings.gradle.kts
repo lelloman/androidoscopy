@@ -25,4 +25,5 @@ include(":sdk")
 include(":okhttp")
 include(":timber")
 include(":leakcanary")
+include(":workmanager")
  
