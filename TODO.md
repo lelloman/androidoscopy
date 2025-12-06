@@ -39,7 +39,7 @@
   - Zoom (mouse wheel on time axis) & pan (click-drag), reset button
   - Export: PNG image, CSV raw data
   - Visual: tooltip on hover, grid lines, min/max/avg annotations, time window selector
-- [ ] **Preset dashboards**
+- [x] **Preset dashboards**
   - SDK convenience functions that expand to multiple sections
   - Examples: `performancePreset()` (memory + threads), `networkPreset()` (stats + requests)
   - Just Kotlin DSL helpers, no new widget type needed

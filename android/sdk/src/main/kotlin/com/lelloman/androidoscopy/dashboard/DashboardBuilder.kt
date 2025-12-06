@@ -162,6 +162,121 @@ class DashboardBuilder {
         }
     }
 
+    // ============ Preset Dashboards ============
+    // These convenience functions expand to multiple sections for common use cases
+
+    /**
+     * Performance monitoring preset.
+     * Includes: Memory usage with alerts, thread count, and optionally memory charts.
+     */
+    fun performancePreset(includeCharts: Boolean = true) {
+        section("Memory") {
+            layout = Layout.ROW
+            row {
+                gauge(
+                    label = "Heap Usage",
+                    valuePath = "\$.memory.heap_used_bytes",
+                    maxPath = "\$.memory.heap_max_bytes",
+                    format = Format.BYTES,
+                    alert = AlertConfig(
+                        condition = AlertCondition.gte("\$.memory.heap_used_ratio", 0.9),
+                        severity = AlertSeverity.WARNING,
+                        message = "High memory usage (>90%)"
+                    )
+                )
+                badge(
+                    label = "Pressure",
+                    dataPath = "\$.memory.pressure_level",
+                    variants = mapOf(
+                        "LOW" to BadgeStyle.SUCCESS,
+                        "MODERATE" to BadgeStyle.WARNING,
+                        "HIGH" to BadgeStyle.DANGER,
+                        "CRITICAL" to BadgeStyle.DANGER
+                    ),
+                    alert = AlertConfig(
+                        condition = AlertCondition.eq("\$.memory.pressure_level", "CRITICAL"),
+                        severity = AlertSeverity.CRITICAL,
+                        message = "Critical memory pressure!"
+                    )
+                )
+                bytes(label = "Native Heap", dataPath = "\$.memory.native_heap_bytes")
+            }
+            if (includeCharts) {
+                row {
+                    chart(
+                        label = "Heap Over Time",
+                        dataPath = "\$.memory.heap_used_bytes",
+                        format = Format.BYTES,
+                        maxPoints = 120,
+                        color = "#3b82f6"
+                    )
+                }
+            }
+        }
+        threadSection()
+    }
+
+    /**
+     * Device status preset.
+     * Includes: Battery status, network connectivity, and storage usage.
+     */
+    fun deviceStatusPreset() {
+        batterySection()
+        networkSection()
+        storageSection()
+    }
+
+    /**
+     * Debugging preset.
+     * Includes: Logs viewer and memory info for debugging sessions.
+     */
+    fun debuggingPreset(logLevel: String = "DEBUG") {
+        section("Logs") {
+            layout = Layout.STACK
+            fullWidth = true
+            widget = WidgetBuilder.logViewer(defaultLevel = logLevel)
+        }
+        memorySection(includeActions = true)
+    }
+
+    /**
+     * Minimal preset.
+     * Includes: Just essential metrics - memory gauge and network status.
+     */
+    fun minimalPreset() {
+        section("Status") {
+            layout = Layout.ROW
+            row {
+                gauge(
+                    label = "Memory",
+                    valuePath = "\$.memory.heap_used_bytes",
+                    maxPath = "\$.memory.heap_max_bytes",
+                    format = Format.BYTES
+                )
+                badge(
+                    label = "Network",
+                    dataPath = "\$.network.is_connected",
+                    variants = mapOf(
+                        "true" to BadgeStyle.SUCCESS,
+                        "false" to BadgeStyle.DANGER
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Complete system overview preset.
+     * Includes all available system metrics in organized sections.
+     */
+    fun fullSystemPreset() {
+        memorySection(includeActions = false)
+        threadSection()
+        batterySection()
+        networkSection()
+        storageSection()
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK
