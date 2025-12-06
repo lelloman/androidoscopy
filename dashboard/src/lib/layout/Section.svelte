@@ -102,8 +102,8 @@
     }
 
     .content.layout-row {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1rem;
     }
 
@@ -117,5 +117,11 @@
         display: flex;
         flex-direction: column;
         gap: 1rem;
+    }
+
+    @media (min-width: 1200px) {
+        .content.layout-row {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
     }
 </style>

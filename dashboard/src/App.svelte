@@ -100,9 +100,16 @@
     }
 
     main {
-        max-width: 1200px;
+        max-width: 1800px;
         margin: 0 auto;
-        padding: 2rem;
+        padding: 2rem 3rem;
+        width: 100%;
+    }
+
+    @media (min-width: 1400px) {
+        main {
+            padding: 2rem 4rem;
+        }
     }
 
     header {

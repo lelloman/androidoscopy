@@ -26,7 +26,6 @@
         padding: 1rem;
         background: var(--surface-color, #1e1e1e);
         border-radius: 8px;
-        min-width: 120px;
     }
 
     .label {
