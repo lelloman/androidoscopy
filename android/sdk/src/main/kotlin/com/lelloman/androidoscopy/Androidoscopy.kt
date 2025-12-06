@@ -394,7 +394,7 @@ object Androidoscopy {
         }
 
         @Suppress("UNCHECKED_CAST")
-        private fun valueToJsonElement(value: Any): JsonElement {
+        private fun valueToJsonElement(value: Any?): JsonElement {
             return when (value) {
                 is String -> JsonPrimitive(value)
                 is Number -> JsonPrimitive(value)
@@ -406,7 +406,7 @@ object Androidoscopy {
                     )
                 })
 
-                else -> JsonPrimitive(value.toString())
+                else -> JsonPrimitive(value?.toString())
             }
         }
     }

@@ -98,41 +98,6 @@ fun DemoScreen(
         // Connection Status Card
         ConnectionStatusCard(connectionState)
 
-        // Core Data Providers Section
-        SectionCard(title = "Core Data Providers") {
-            Text(
-                text = "Built-in providers for system metrics:",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            DataProviderItem("Memory", "Heap usage, native heap, pressure level")
-            DataProviderItem("Battery", "Level, status, health, temperature")
-            DataProviderItem("Storage", "Internal/external storage, app data, cache")
-            DataProviderItem("Threads", "Active count, total count, thread details")
-            DataProviderItem("Network", "Connection type, WiFi signal, bandwidth")
-            DataProviderItem("ANR Detection", "Watchdog-based ANR detection with stack traces")
-            DataProviderItem("Permissions", "App permissions with grant status")
-            DataProviderItem("Build Info", "App version, SDK levels, git SHA")
-        }
-
-        // Integration Modules Section
-        SectionCard(title = "Integration Modules") {
-            Text(
-                text = "Third-party library integrations:",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            DataProviderItem("OkHttp", "HTTP request/response monitoring")
-            DataProviderItem("Timber", "Log forwarding to dashboard")
-            DataProviderItem("LeakCanary", "Memory leak detection and reporting")
-            DataProviderItem("WorkManager", "Background job monitoring")
-            DataProviderItem("Coil", "Image cache statistics")
-            DataProviderItem("SharedPreferences", "Preferences viewer/editor")
-            DataProviderItem("SQLite", "Database browser with query execution")
-        }
-
         // OkHttp Demo
         SectionCard(title = "Network Requests (OkHttp)") {
             Text(
@@ -351,37 +316,6 @@ fun DemoScreen(
             DataProviderItem("Clear Image Cache", "Clear Coil memory/disk cache")
             DataProviderItem("Execute SQL", "Run queries on the demo database")
             DataProviderItem("Edit Preferences", "Modify SharedPreferences entries")
-        }
-
-        // Features Summary
-        SectionCard(title = "Dashboard Configuration") {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = """
-                        dashboard {
-                            memorySection()
-                            batterySection()
-                            anrSection()
-                            networkRequestsSection()
-                            sharedPreferencesSection()
-                            sqliteSection()
-                            permissionsSection()
-                            buildInfoSection()
-                            leaksSection()
-                            workManagerSection()
-                            coilSection()
-                            logsSection()
-                        }
-                    """.trimIndent(),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

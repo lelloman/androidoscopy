@@ -67,7 +67,6 @@ class SampleApplication : Application() {
 
         // Initialize Timber first (before Androidoscopy so logs are captured)
         Timber.plant(Timber.DebugTree())
-        Timber.plant(AndroidoscopyTree())
 
         Timber.d("Initializing demo application...")
 
@@ -78,6 +77,7 @@ class SampleApplication : Application() {
         setupCoil()
 
         // Setup LeakCanary with Androidoscopy
+        leakDataProvider = LeakDataProvider()
         setupLeakCanary()
 
         // Initialize SharedPreferences with demo data
@@ -94,7 +94,6 @@ class SampleApplication : Application() {
         sqliteDataProvider = SqliteDataProvider(this)
         workManagerDataProvider = WorkManagerDataProvider(this)
         coilDataProvider = CoilDataProvider(imageLoader)
-        leakDataProvider = LeakDataProvider()
 
         // Initialize Androidoscopy
         Androidoscopy.init(this) {
@@ -219,6 +218,7 @@ class SampleApplication : Application() {
         Androidoscopy.registerDataProvider(workManagerDataProvider)
         Androidoscopy.registerDataProvider(coilDataProvider)
 
+        Timber.plant(AndroidoscopyTree())
         Timber.i("Androidoscopy initialized with all data providers and integration modules")
 
         // Send initial metrics
