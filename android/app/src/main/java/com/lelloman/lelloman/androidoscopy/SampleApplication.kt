@@ -4,7 +4,14 @@ import android.app.Application
 import android.util.Log
 import com.lelloman.androidoscopy.ActionResult
 import com.lelloman.androidoscopy.Androidoscopy
+import com.lelloman.androidoscopy.BuiltInActions
 import com.lelloman.androidoscopy.dashboard.ButtonStyle
+import com.lelloman.androidoscopy.data.BatteryDataProvider
+import com.lelloman.androidoscopy.data.MemoryDataProvider
+import com.lelloman.androidoscopy.data.NetworkDataProvider
+import com.lelloman.androidoscopy.data.StorageDataProvider
+import com.lelloman.androidoscopy.data.ThreadDataProvider
+import com.lelloman.androidoscopy.protocol.LogLevel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,20 +27,27 @@ class SampleApplication : Application() {
         Log.d(TAG, "Initializing Androidoscopy...")
 
         Androidoscopy.init(this) {
-            appName = "Androidoscopy Sample"
+            appName = "Androidoscopy Demo"
 
             dashboard {
-                memorySection()
+                // Built-in sections for system metrics
+                memorySection(includeActions = true)
+                batterySection()
+                storageSection()
+                threadSection()
+                networkSection()
                 logsSection()
 
-                section("Sample Metrics") {
+                // Custom section for demo metrics
+                section("Demo Metrics") {
                     row {
                         number("Click Count", "\$.metrics.click_count")
                         text("Last Action", "\$.metrics.last_action")
                     }
                 }
 
-                section("Actions") {
+                // Custom actions section
+                section("Custom Actions") {
                     actions {
                         button(
                             label = "Reset Counter",
@@ -49,38 +63,55 @@ class SampleApplication : Application() {
                 }
             }
 
+            // Register built-in actions
+            onAction(BuiltInActions.FORCE_GC, BuiltInActions.forceGc())
+            onAction(BuiltInActions.CLEAR_CACHE, BuiltInActions.clearCache(this@SampleApplication))
+
+            // Register custom actions
             onAction("reset_counter") {
                 _clickCount.value = 0
-                updateMetrics()
+                updateMetrics("Counter reset")
                 ActionResult.success("Counter reset to 0")
             }
 
             onAction("say_hello") {
-                ActionResult.success("Hello from Androidoscopy Sample!")
+                ActionResult.success("Hello from Androidoscopy Demo!")
             }
         }
 
-        Log.d(TAG, "Androidoscopy initialized, updating metrics...")
+        // Register all data providers
+        Androidoscopy.registerDataProvider(MemoryDataProvider(this))
+        Androidoscopy.registerDataProvider(BatteryDataProvider(this))
+        Androidoscopy.registerDataProvider(StorageDataProvider(this))
+        Androidoscopy.registerDataProvider(ThreadDataProvider())
+        Androidoscopy.registerDataProvider(NetworkDataProvider(this))
 
-        updateMetrics()
-    }
+        Log.d(TAG, "Androidoscopy initialized with all data providers")
 
-    companion object {
-        private const val TAG = "SampleApp"
+        // Send initial metrics
+        updateMetrics("App started")
+
+        // Log startup
+        Androidoscopy.log(LogLevel.INFO, TAG, "Demo application started successfully")
     }
 
     fun incrementClickCount() {
         _clickCount.value++
-        updateMetrics()
+        updateMetrics("Button clicked")
+        Androidoscopy.log(LogLevel.DEBUG, TAG, "Click count incremented to ${_clickCount.value}")
     }
 
-    private fun updateMetrics() {
+    private fun updateMetrics(lastAction: String) {
         val count = _clickCount.value
         Androidoscopy.updateData {
             put("metrics", mapOf(
                 "click_count" to count,
-                "last_action" to if (count == 0) "None" else "Button clicked"
+                "last_action" to lastAction
             ))
         }
+    }
+
+    companion object {
+        private const val TAG = "SampleApp"
     }
 }

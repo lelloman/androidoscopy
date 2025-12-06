@@ -122,6 +122,37 @@ class DashboardBuilder {
         }
     }
 
+    fun networkSection() {
+        section("Network") {
+            layout = Layout.ROW
+            row {
+                badge(
+                    label = "Connection",
+                    dataPath = "\$.network.connection_type",
+                    variants = mapOf(
+                        "WIFI" to BadgeStyle.SUCCESS,
+                        "CELLULAR" to BadgeStyle.INFO,
+                        "ETHERNET" to BadgeStyle.SUCCESS,
+                        "NONE" to BadgeStyle.DANGER,
+                        "OTHER" to BadgeStyle.MUTED
+                    )
+                )
+                badge(
+                    label = "Status",
+                    dataPath = "\$.network.is_connected",
+                    variants = mapOf(
+                        "true" to BadgeStyle.SUCCESS,
+                        "false" to BadgeStyle.DANGER
+                    )
+                )
+                number(
+                    label = "Signal",
+                    dataPath = "\$.network.wifi_signal_level"
+                )
+            }
+        }
+    }
+
     fun logsSection() {
         section("Logs") {
             layout = Layout.STACK

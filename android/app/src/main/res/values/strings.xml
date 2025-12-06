@@ -1,10 +1,3 @@
 <resources>
-    <string name="app_name">Androidoscopy Sample</string>
-    <string name="connection_status_disconnected">Status: Disconnected</string>
-    <string name="connection_status_connecting">Status: Connecting...</string>
-    <string name="connection_status_connected">Status: Connected</string>
-    <string name="connection_status_error">Status: Error - %s</string>
-    <string name="click_count_format">Clicks: %d</string>
-    <string name="click_me">Click Me!</string>
-    <string name="log_me">Log Me!</string>
+    <string name="app_name">Androidoscopy Demo</string>
 </resources>
