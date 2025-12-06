@@ -35,7 +35,7 @@
   - Modal overlay fills viewport
   - Close via ESC key or click outside
   - Dashboard-only feature (no protocol changes)
-- [ ] **Chart improvements**
+- [x] **Chart improvements**
   - Zoom (mouse wheel on time axis) & pan (click-drag), reset button
   - Export: PNG image, CSV raw data
   - Visual: tooltip on hover, grid lines, min/max/avg annotations, time window selector
