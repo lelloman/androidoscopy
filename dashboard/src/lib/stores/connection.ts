@@ -136,14 +136,27 @@ function handleMessage(message: ServiceToDashboardMessage) {
 }
 
 function handleSync(sessionsList: Session[]) {
-    const newSessions = new Map<string, Session>();
-    for (const session of sessionsList) {
-        if (!session.recent_logs) {
-            session.recent_logs = [];
+    sessions.update(existingMap => {
+        const newSessions = new Map<string, Session>();
+        for (const session of sessionsList) {
+            if (!session.recent_logs) {
+                session.recent_logs = [];
+            }
+            // Preserve existing latest_data and recent_logs if they exist
+            const existing = existingMap.get(session.session_id);
+            if (existing) {
+                session.latest_data = {
+                    ...existing.latest_data,
+                    ...session.latest_data
+                };
+                if (existing.recent_logs && existing.recent_logs.length > 0) {
+                    session.recent_logs = existing.recent_logs;
+                }
+            }
+            newSessions.set(session.session_id, session);
         }
-        newSessions.set(session.session_id, session);
-    }
-    sessions.set(newSessions);
+        return newSessions;
+    });
 }
 
 function handleSessionStarted(session: Session) {
@@ -178,13 +191,15 @@ function handleSessionData(sessionId: string, data: Record<string, unknown>) {
     sessions.update(map => {
         const session = map.get(sessionId);
         if (session) {
-            session.latest_data = {
-                ...session.latest_data,
-                ...data
-            };
-            map.set(sessionId, { ...session });
+            // Mutate in place to avoid unnecessary re-renders
+            if (!session.latest_data) {
+                session.latest_data = {};
+            }
+            Object.assign(session.latest_data, data);
+            // Only create new Map to trigger store update
+            return new Map(map);
         }
-        return new Map(map);
+        return map;
     });
 }
 

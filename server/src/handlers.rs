@@ -329,8 +329,15 @@ async fn handle_dashboard_connection(socket: WebSocket, state: AppState) {
                 match serde_json::from_str::<DashboardToServiceMessage>(&text) {
                     Ok(DashboardToServiceMessage::Action { payload }) => {
                         // Forward ACTION to the appropriate app
-                        let manager = state.session_manager.lock().await;
+                        let mut manager = state.session_manager.lock().await;
                         let session_id = &payload.session_id;
+
+                        // Handle network_clear action - also clear server-side accumulated requests
+                        if payload.action == "network_clear" {
+                            if let Some(session) = manager.get_session_mut(session_id) {
+                                session.clear_network_requests();
+                            }
+                        }
 
                         if let Some(session) = manager.get_session(session_id) {
                             if let Some(ref app_sender) = session.app_sender {

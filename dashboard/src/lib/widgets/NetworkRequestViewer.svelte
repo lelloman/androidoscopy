@@ -23,9 +23,10 @@
     const HTTP_METHODS = ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
     const STATUS_FILTERS = ['ALL', 'Success', 'Error'];
 
+    // Get requests directly - the store now mutates in place so this is stable
     let requests = $derived.by(() => {
         const raw = evaluateArrayPath(data, widget.data_path);
-        return raw as NetworkRequest[];
+        return Array.isArray(raw) ? raw as NetworkRequest[] : [];
     });
 
     let filteredRequests = $derived.by(() => {
@@ -72,6 +73,22 @@
         } catch {
             return ts;
         }
+    }
+
+    function formatHeaders(headers: unknown): string {
+        if (!headers) return '';
+        if (typeof headers === 'string') return headers;
+        if (typeof headers === 'object') {
+            try {
+                // If it's an object, format as key: value pairs
+                return Object.entries(headers as Record<string, unknown>)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join('\n');
+            } catch {
+                return JSON.stringify(headers, null, 2);
+            }
+        }
+        return String(headers);
     }
 
     async function handleClear() {
@@ -127,90 +144,92 @@
         <span class="stat error">5xx/Err: {requests.filter(r => r.is_error || r.response_code >= 500).length}</span>
     </div>
 
-    <div class="request-list">
-        {#if filteredRequests.length === 0}
-            <div class="empty">No requests captured</div>
-        {:else}
-            {#each filteredRequests as request}
-                <button
-                    class="request-row"
-                    class:selected={selectedRequest?.id === request.id}
-                    class:error={request.is_error}
-                    onclick={() => selectRequest(request)}
-                >
-                    <span class="method {getMethodColor(request.method)}">{request.method}</span>
-                    <span class="status {getStatusColor(request.response_code, request.is_error)}">
-                        {request.is_error ? 'ERR' : request.response_code}
-                    </span>
-                    <span class="url" title={request.url}>{request.path || request.url}</span>
-                    <span class="host">{request.host}</span>
-                    <span class="duration">{formatDuration(request.duration_ms)}</span>
-                    <span class="time">{formatTimestamp(request.timestamp)}</span>
-                </button>
-            {/each}
-        {/if}
-    </div>
-
-    {#if selectedRequest}
-        <div class="request-detail">
-            <div class="detail-header">
-                <span class="method {getMethodColor(selectedRequest.method)}">{selectedRequest.method}</span>
-                <span class="detail-url">{selectedRequest.url}</span>
-                <button class="close-detail" onclick={() => selectedRequest = null}>×</button>
-            </div>
-
-            <div class="detail-tabs">
-                <div class="detail-section">
-                    <h4>Response</h4>
-                    <div class="detail-row">
-                        <span class="label">Status:</span>
-                        <span class="status {getStatusColor(selectedRequest.response_code, selectedRequest.is_error)}">
-                            {selectedRequest.is_error ? `Error: ${selectedRequest.error}` : selectedRequest.response_code}
+    <div class="content-area">
+        <div class="request-list">
+            {#if filteredRequests.length === 0}
+                <div class="empty">No requests captured</div>
+            {:else}
+                {#each filteredRequests as request (request.id)}
+                    <button
+                        class="request-row"
+                        class:selected={selectedRequest?.id === request.id}
+                        class:error={request.is_error}
+                        onclick={() => selectRequest(request)}
+                    >
+                        <span class="method {getMethodColor(request.method)}">{request.method}</span>
+                        <span class="status {getStatusColor(request.response_code, request.is_error)}">
+                            {request.is_error ? 'ERR' : request.response_code}
                         </span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">Duration:</span>
-                        <span>{formatDuration(selectedRequest.duration_ms)}</span>
-                    </div>
+                        <span class="url" title={request.url}>{request.path || request.url}</span>
+                        <span class="host">{request.host}</span>
+                        <span class="duration">{formatDuration(request.duration_ms)}</span>
+                        <span class="time">{formatTimestamp(request.timestamp)}</span>
+                    </button>
+                {/each}
+            {/if}
+        </div>
+
+        {#if selectedRequest}
+            <div class="request-detail">
+                <div class="detail-header">
+                    <span class="method {getMethodColor(selectedRequest.method)}">{selectedRequest.method}</span>
+                    <span class="detail-url">{selectedRequest.url}</span>
+                    <button class="close-detail" onclick={() => selectedRequest = null}>×</button>
                 </div>
 
-                {#if selectedRequest.request_headers}
+                <div class="detail-tabs">
                     <div class="detail-section">
-                        <h4>Request Headers</h4>
-                        <pre class="headers">{selectedRequest.request_headers}</pre>
+                        <h4>Response</h4>
+                        <div class="detail-row">
+                            <span class="label">Status:</span>
+                            <span class="status {getStatusColor(selectedRequest.response_code, selectedRequest.is_error)}">
+                                {selectedRequest.is_error ? `Error: ${selectedRequest.error}` : selectedRequest.response_code}
+                            </span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Duration:</span>
+                            <span>{formatDuration(selectedRequest.duration_ms)}</span>
+                        </div>
                     </div>
-                {/if}
 
-                {#if selectedRequest.response_headers}
-                    <div class="detail-section">
-                        <h4>Response Headers</h4>
-                        <pre class="headers">{selectedRequest.response_headers}</pre>
-                    </div>
-                {/if}
+                    {#if selectedRequest.request_headers}
+                        <div class="detail-section">
+                            <h4>Request Headers</h4>
+                            <pre class="headers">{formatHeaders(selectedRequest.request_headers)}</pre>
+                        </div>
+                    {/if}
 
-                {#if selectedRequest.request_body}
-                    <div class="detail-section">
-                        <h4>Request Body</h4>
-                        <pre class="body">{selectedRequest.request_body}</pre>
-                    </div>
-                {/if}
+                    {#if selectedRequest.response_headers}
+                        <div class="detail-section">
+                            <h4>Response Headers</h4>
+                            <pre class="headers">{formatHeaders(selectedRequest.response_headers)}</pre>
+                        </div>
+                    {/if}
 
-                {#if selectedRequest.response_body}
-                    <div class="detail-section">
-                        <h4>Response Body</h4>
-                        <pre class="body">{selectedRequest.response_body}</pre>
-                    </div>
-                {/if}
+                    {#if selectedRequest.request_body}
+                        <div class="detail-section">
+                            <h4>Request Body</h4>
+                            <pre class="body">{selectedRequest.request_body}</pre>
+                        </div>
+                    {/if}
+
+                    {#if selectedRequest.response_body}
+                        <div class="detail-section">
+                            <h4>Response Body</h4>
+                            <pre class="body">{selectedRequest.response_body}</pre>
+                        </div>
+                    {/if}
+                </div>
             </div>
-        </div>
-    {/if}
+        {/if}
+    </div>
 </div>
 
 <style>
     .network-viewer {
         display: flex;
         flex-direction: column;
-        height: 450px;
+        height: 600px;
         background: var(--surface-color, #1e1e1e);
         border-radius: 8px;
         overflow: hidden;
@@ -275,16 +294,17 @@
     .stat.warning { color: #f59e0b; }
     .stat.error { color: #ef4444; }
 
-    .request-list {
+    .content-area {
         flex: 1;
         overflow-y: auto;
+        min-height: 0;
     }
 
     .empty {
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 100%;
+        padding: 3rem;
         color: var(--text-muted, #666);
         font-style: italic;
     }
@@ -379,8 +399,6 @@
 
     .request-detail {
         border-top: 1px solid var(--border-color, #333);
-        max-height: 250px;
-        overflow-y: auto;
         background: var(--input-bg, #252525);
     }
 
@@ -390,8 +408,6 @@
         gap: 0.5rem;
         padding: 0.5rem 0.75rem;
         border-bottom: 1px solid var(--border-color, #333);
-        position: sticky;
-        top: 0;
         background: var(--input-bg, #252525);
     }
 
@@ -450,11 +466,8 @@
         border-radius: 4px;
         font-size: 0.75rem;
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
-        overflow-x: auto;
         white-space: pre-wrap;
         word-break: break-all;
-        max-height: 150px;
-        overflow-y: auto;
         margin: 0;
     }
 </style>

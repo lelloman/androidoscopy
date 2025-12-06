@@ -37,7 +37,7 @@
 
     <div class="sections">
         {#if session.dashboard?.sections}
-            {#each session.dashboard.sections as section}
+            {#each session.dashboard.sections as section (section.id)}
                 <Section
                     {section}
                     data={session.latest_data}

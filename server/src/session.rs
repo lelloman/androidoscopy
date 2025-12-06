@@ -100,6 +100,7 @@ pub struct Session {
     pub ended_at: Option<DateTime<Utc>>,
     data_buffer: RingBuffer<DataMessage>,
     log_buffer: RingBuffer<LogMessage>,
+    network_requests: RingBuffer<Value>,
     pub app_sender: Option<mpsc::Sender<ServiceToAppMessage>>,
 }
 
@@ -121,6 +122,7 @@ impl Session {
             ended_at: None,
             data_buffer: RingBuffer::new(data_buffer_size),
             log_buffer: RingBuffer::new(log_buffer_size),
+            network_requests: RingBuffer::new(500), // Store up to 500 network requests
             app_sender: Some(app_sender),
         }
     }
@@ -129,12 +131,16 @@ impl Session {
         self.data_buffer.push(DataMessage { timestamp, payload });
     }
 
+    pub fn clear_network_requests(&mut self) {
+        self.network_requests.clear();
+    }
+
     pub fn add_log(&mut self, timestamp: DateTime<Utc>, payload: LogPayload) {
         self.log_buffer.push(LogMessage { timestamp, payload });
     }
 
-    pub fn get_latest_data(&self) -> Option<&Value> {
-        self.data_buffer.iter().last().map(|d| &d.payload)
+    pub fn get_latest_data(&self) -> Option<Value> {
+        self.data_buffer.iter().last().map(|d| d.payload.clone())
     }
 
     pub fn get_recent_logs(&self) -> Vec<LogEntry> {
@@ -164,7 +170,7 @@ impl Session {
             device: self.device.clone(),
             dashboard: self.dashboard_schema.clone(),
             started_at: self.started_at,
-            latest_data: self.get_latest_data().cloned(),
+            latest_data: self.get_latest_data(),
             recent_logs: self.get_recent_logs(),
         }
     }

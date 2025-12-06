@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.lelloman.androidoscopy.Androidoscopy
@@ -42,7 +44,9 @@ import com.lelloman.androidoscopy.ConnectionState
 import com.lelloman.lelloman.androidoscopy.ui.theme.AndroidoscopyTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
 import kotlin.random.Random
 
@@ -107,6 +111,7 @@ fun DemoScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Row 1: Basic methods
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -116,7 +121,7 @@ fun DemoScreen(
                         scope.launch(Dispatchers.IO) {
                             try {
                                 val request = Request.Builder()
-                                    .url("https://httpbin.org/get")
+                                    .url("https://httpbin.org/get?demo=androidoscopy&ts=${System.currentTimeMillis()}")
                                     .build()
                                 app.okHttpClient.newCall(request).execute().use { response ->
                                     Timber.d("GET request: ${response.code}")
@@ -134,9 +139,10 @@ fun DemoScreen(
                     onClick = {
                         scope.launch(Dispatchers.IO) {
                             try {
+                                val json = """{"name":"test","value":${Random.nextInt(100)}}"""
                                 val request = Request.Builder()
                                     .url("https://httpbin.org/post")
-                                    .post(okhttp3.RequestBody.create(null, "test"))
+                                    .post(json.toRequestBody("application/json".toMediaType()))
                                     .build()
                                 app.okHttpClient.newCall(request).execute().use { response ->
                                     Timber.d("POST request: ${response.code}")
@@ -150,6 +156,56 @@ fun DemoScreen(
                 ) {
                     Text("POST")
                 }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val json = """{"updated":true,"ts":${System.currentTimeMillis()}}"""
+                                val request = Request.Builder()
+                                    .url("https://httpbin.org/put")
+                                    .put(json.toRequestBody("application/json".toMediaType()))
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("PUT request: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Request failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("PUT")
+                }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val request = Request.Builder()
+                                    .url("https://httpbin.org/delete")
+                                    .delete()
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("DELETE request: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Request failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("DEL")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Row 2: Error states and special cases
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 OutlinedButton(
                     onClick = {
                         scope.launch(Dispatchers.IO) {
@@ -169,11 +225,70 @@ fun DemoScreen(
                 ) {
                     Text("404")
                 }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val request = Request.Builder()
+                                    .url("https://httpbin.org/status/500")
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("500 request: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Request failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("500")
+                }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val request = Request.Builder()
+                                    .url("https://httpbin.org/delay/2")
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("Slow request: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Request failed")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Slow")
+                }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val request = Request.Builder()
+                                    .url("https://invalid.domain.test/fail")
+                                    .build()
+                                app.okHttpClient.newCall(request).execute().use { response ->
+                                    Timber.d("Should not reach: ${response.code}")
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Network error (expected)")
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Fail")
+                }
             }
         }
 
         // Coil Demo
         SectionCard(title = "Image Loading (Coil)") {
+            val imageKey = remember { mutableIntStateOf(0) }
+
             Text(
                 text = "Load images to populate cache stats:",
                 style = MaterialTheme.typography.bodySmall,
@@ -186,40 +301,24 @@ fun DemoScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(app)
-                        .data("https://picsum.photos/100/100?random=${Random.nextInt()}")
-                        .build(),
-                    contentDescription = "Random image",
-                    imageLoader = app.imageLoader,
-                    modifier = Modifier.size(60.dp)
-                )
-                AsyncImage(
-                    model = ImageRequest.Builder(app)
-                        .data("https://picsum.photos/100/100?random=${Random.nextInt()}")
-                        .build(),
-                    contentDescription = "Random image",
-                    imageLoader = app.imageLoader,
-                    modifier = Modifier.size(60.dp)
-                )
-                AsyncImage(
-                    model = ImageRequest.Builder(app)
-                        .data("https://picsum.photos/100/100?random=${Random.nextInt()}")
-                        .build(),
-                    contentDescription = "Random image",
-                    imageLoader = app.imageLoader,
-                    modifier = Modifier.size(60.dp)
-                )
+                repeat(4) { index ->
+                    AsyncImage(
+                        model = ImageRequest.Builder(app)
+                            .data("https://picsum.photos/100/100?img=${imageKey.intValue * 4 + index}")
+                            .build(),
+                        contentDescription = "Random image",
+                        imageLoader = app.imageLoader,
+                        modifier = Modifier.size(60.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = {
-                    // Load multiple images to fill cache
-                    repeat(5) {
-                        Timber.d("Loading image $it")
-                    }
+                    imageKey.intValue++
+                    Timber.d("Loading new batch of images (batch ${imageKey.intValue})")
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
