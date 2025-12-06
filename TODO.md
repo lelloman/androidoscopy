@@ -74,7 +74,7 @@
   - Show dangerous vs normal distinction
   - Refresh: on app resume (lifecycle-aware) + manual refresh button
   - Dashboard: `permissionsSection()` - table with permission name, status, type
-- [ ] **Build info section**
+- [x] **Build info section**
   - Show: app/package name, version name/code, build type, flavor, min/target SDK
   - Optional git SHA (user provides via `gitSha = BuildConfig.GIT_SHA`)
   - Dashboard: `buildInfoSection()` - static key-value display

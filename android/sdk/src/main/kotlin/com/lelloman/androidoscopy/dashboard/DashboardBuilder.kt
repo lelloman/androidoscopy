@@ -571,6 +571,47 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * Build info section.
+     * Displays static build information like app name, version, SDK levels.
+     * Requires: BuildInfoDataProvider registered.
+     */
+    fun buildInfoSection() {
+        section("Build Info") {
+            layout = Layout.STACK
+            collapsible = true
+            collapsedDefault = true
+
+            row {
+                text(label = "App Name", dataPath = "\$.build_info.app_name")
+                text(label = "Package", dataPath = "\$.build_info.package_name")
+            }
+
+            row {
+                text(label = "Version", dataPath = "\$.build_info.version_name")
+                number(label = "Version Code", dataPath = "\$.build_info.version_code")
+            }
+
+            row {
+                number(label = "Min SDK", dataPath = "\$.build_info.min_sdk")
+                number(label = "Target SDK", dataPath = "\$.build_info.target_sdk")
+                number(label = "API Level", dataPath = "\$.build_info.api_level")
+            }
+
+            row {
+                text(label = "Build Type", dataPath = "\$.build_info.build_type")
+                text(label = "Flavor", dataPath = "\$.build_info.flavor")
+                text(label = "Git SHA", dataPath = "\$.build_info.git_sha")
+            }
+
+            row {
+                text(label = "Device", dataPath = "\$.build_info.device_model")
+                text(label = "Manufacturer", dataPath = "\$.build_info.device_manufacturer")
+                text(label = "Android", dataPath = "\$.build_info.android_version")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK
