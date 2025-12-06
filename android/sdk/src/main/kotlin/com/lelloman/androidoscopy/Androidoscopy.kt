@@ -116,7 +116,7 @@ object Androidoscopy {
                     return@launch
                 }
 
-                val url = "ws://$hostIp:${config.port}/ws/app"
+                val url = "wss://$hostIp:${config.port}/ws/app"
                 webSocketClient = WebSocketClient(url)
                 webSocketClient?.connect()
 

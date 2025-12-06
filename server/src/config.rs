@@ -26,6 +26,20 @@ pub struct ServerConfig {
     pub max_connections: usize,
     #[serde(default = "default_udp_discovery")]
     pub udp_discovery_enabled: bool,
+    #[serde(default)]
+    pub tls: TlsConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TlsConfig {
+    #[serde(default = "default_tls_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_cert_path")]
+    pub cert_path: String,
+    #[serde(default = "default_key_path")]
+    pub key_path: String,
+    #[serde(default = "default_auto_generate")]
+    pub auto_generate: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -51,11 +65,11 @@ pub struct DashboardConfig {
 }
 
 fn default_websocket_port() -> u16 {
-    9999
+    8889
 }
 
 fn default_http_port() -> u16 {
-    8080
+    8880
 }
 
 fn default_bind_address() -> String {
@@ -67,6 +81,28 @@ fn default_max_connections() -> usize {
 }
 
 fn default_udp_discovery() -> bool {
+    true
+}
+
+fn default_tls_enabled() -> bool {
+    true
+}
+
+fn default_cert_path() -> String {
+    let base = dirs::data_local_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("androidoscopy");
+    base.join("cert.pem").to_string_lossy().to_string()
+}
+
+fn default_key_path() -> String {
+    let base = dirs::data_local_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("androidoscopy");
+    base.join("key.pem").to_string_lossy().to_string()
+}
+
+fn default_auto_generate() -> bool {
     true
 }
 
@@ -109,6 +145,18 @@ impl Default for ServerConfig {
             bind_address: default_bind_address(),
             max_connections: default_max_connections(),
             udp_discovery_enabled: default_udp_discovery(),
+            tls: TlsConfig::default(),
+        }
+    }
+}
+
+impl Default for TlsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_tls_enabled(),
+            cert_path: default_cert_path(),
+            key_path: default_key_path(),
+            auto_generate: default_auto_generate(),
         }
     }
 }
@@ -167,8 +215,8 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = Config::default();
-        assert_eq!(config.server.http_port, 8080);
-        assert_eq!(config.server.websocket_port, 9999);
+        assert_eq!(config.server.http_port, 8880);
+        assert_eq!(config.server.websocket_port, 8889);
         assert_eq!(config.server.bind_address, "127.0.0.1");
     }
 

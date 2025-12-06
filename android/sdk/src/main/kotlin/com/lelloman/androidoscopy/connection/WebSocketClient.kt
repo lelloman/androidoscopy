@@ -12,10 +12,19 @@ import java.util.concurrent.TimeUnit
 
 class WebSocketClient(
     private val url: String,
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .readTimeout(0, TimeUnit.MILLISECONDS)
-        .build()
+    private val okHttpClient: OkHttpClient = createOkHttpClient()
 ) {
+    companion object {
+        private fun createOkHttpClient(): OkHttpClient {
+            val builder = OkHttpClient.Builder()
+                .readTimeout(0, TimeUnit.MILLISECONDS)
+
+            // Configure TLS to trust any certificate (for self-signed server certs)
+            TlsConfig.configureClient(builder)
+
+            return builder.build()
+        }
+    }
     private var webSocket: WebSocket? = null
     private val messageChannel = Channel<WebSocketEvent>(Channel.BUFFERED)
 

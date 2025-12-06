@@ -22,7 +22,7 @@ data class ActionResult(
 class AndroidoscopyConfig {
     var appName: String? = null
     var hostIp: String? = null
-    var port: Int = 8080
+    var port: Int = 8889
     var enableLogging: Boolean = true
 
     internal var dashboardSchema: JsonElement? = null
