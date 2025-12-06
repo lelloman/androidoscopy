@@ -14,6 +14,7 @@ timber = "5.0.1"
 leakcanary = "2.14"
 workmanager = "2.10.1"
 coil = "3.1.0"
+mockk = "1.13.13"
 constraintlayout = "2.2.1"
 lifecycle = "2.8.7"
 activityCompose = "1.10.1"
@@ -36,6 +37,7 @@ timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "tim
 leakcanary-android = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
 workmanager-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workmanager" }
 coil = { group = "io.coil-kt.coil3", name = "coil", version.ref = "coil" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }

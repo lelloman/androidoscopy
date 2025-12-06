@@ -321,4 +321,358 @@ class DashboardBuilderTest {
         assertEquals("grid", section?.get("layout")?.jsonPrimitive?.content)
         assertEquals(3, section?.get("columns")?.jsonPrimitive?.content?.toInt())
     }
+
+    @Test
+    fun `anrSection creates proper ANR section`() {
+        val builder = DashboardBuilder()
+        builder.anrSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("anr_detection", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("ANR Detection", section?.get("title")?.jsonPrimitive?.content)
+        assertEquals(true, section?.get("collapsible")?.jsonPrimitive?.content?.toBoolean())
+        assertEquals(true, section?.get("full_width")?.jsonPrimitive?.content?.toBoolean())
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+        assertTrue(widgets!!.size >= 2)
+
+        // Check for alert on ANR count
+        val numberWidget = widgets.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "number" &&
+            it.jsonObject["label"]?.jsonPrimitive?.content == "ANR Count"
+        }?.jsonObject
+        assertNotNull(numberWidget)
+        assertNotNull(numberWidget?.get("alert"))
+    }
+
+    @Test
+    fun `networkRequestsSection creates proper network section`() {
+        val builder = DashboardBuilder()
+        builder.networkRequestsSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("network_requests", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("Network Requests", section?.get("title")?.jsonPrimitive?.content)
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+
+        // Should have stats numbers and a table
+        val table = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "table"
+        }?.jsonObject
+        assertNotNull(table)
+        assertEquals("\$.network.requests", table?.get("data_path")?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `sharedPreferencesSection creates proper prefs section`() {
+        val builder = DashboardBuilder()
+        builder.sharedPreferencesSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("sharedpreferences", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("SharedPreferences", section?.get("title")?.jsonPrimitive?.content)
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+
+        // Should have buttons for add entry
+        val button = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "button" &&
+            it.jsonObject["action"]?.jsonPrimitive?.content == "prefs_add"
+        }?.jsonObject
+        assertNotNull(button)
+    }
+
+    @Test
+    fun `sharedPreferencesSection with name uses correct data key`() {
+        val builder = DashboardBuilder()
+        builder.sharedPreferencesSection("my_prefs")
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("SharedPreferences (my_prefs)", section?.get("title")?.jsonPrimitive?.content)
+
+        // Check data path uses prefs_my_prefs
+        val widgets = section?.get("widgets")?.jsonArray
+        val numberWidget = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "number"
+        }?.jsonObject
+        assertTrue(numberWidget?.get("data_path")?.jsonPrimitive?.content?.contains("prefs_my_prefs") == true)
+    }
+
+    @Test
+    fun `sqliteSection creates proper SQLite section`() {
+        val builder = DashboardBuilder()
+        builder.sqliteSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("sqlite", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("SQLite", section?.get("title")?.jsonPrimitive?.content)
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+
+        // Should have query button
+        val queryButton = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "button" &&
+            it.jsonObject["action"]?.jsonPrimitive?.content == "sqlite_query"
+        }?.jsonObject
+        assertNotNull(queryButton)
+    }
+
+    @Test
+    fun `permissionsSection creates proper permissions section`() {
+        val builder = DashboardBuilder()
+        builder.permissionsSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("permissions", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("Permissions", section?.get("title")?.jsonPrimitive?.content)
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+
+        // Should have table with permissions data
+        val table = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "table"
+        }?.jsonObject
+        assertNotNull(table)
+        assertEquals("\$.permissions.permissions", table?.get("data_path")?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `buildInfoSection creates proper build info section`() {
+        val builder = DashboardBuilder()
+        builder.buildInfoSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("build_info", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("Build Info", section?.get("title")?.jsonPrimitive?.content)
+        assertEquals(true, section?.get("collapsed_default")?.jsonPrimitive?.content?.toBoolean())
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+        assertTrue(widgets!!.size >= 4) // Has multiple rows of info
+    }
+
+    @Test
+    fun `leaksSection creates proper leaks section`() {
+        val builder = DashboardBuilder()
+        builder.leaksSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("memory_leaks", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("Memory Leaks", section?.get("title")?.jsonPrimitive?.content)
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+
+        // Should have alert on leak count
+        val leakCountWidget = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "number" &&
+            it.jsonObject["label"]?.jsonPrimitive?.content == "Leak Count"
+        }?.jsonObject
+        assertNotNull(leakCountWidget)
+        assertNotNull(leakCountWidget?.get("alert"))
+    }
+
+    @Test
+    fun `workManagerSection creates proper WorkManager section`() {
+        val builder = DashboardBuilder()
+        builder.workManagerSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("workmanager", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("WorkManager", section?.get("title")?.jsonPrimitive?.content)
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+
+        // Should have cancel all button
+        val cancelAllButton = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "button" &&
+            it.jsonObject["action"]?.jsonPrimitive?.content == "workmanager_cancel_all"
+        }?.jsonObject
+        assertNotNull(cancelAllButton)
+        assertEquals("danger", cancelAllButton?.get("style")?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `coilSection creates proper Coil section`() {
+        val builder = DashboardBuilder()
+        builder.coilSection()
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals("image_cache_(coil)", section?.get("id")?.jsonPrimitive?.content)
+        assertEquals("Image Cache (Coil)", section?.get("title")?.jsonPrimitive?.content)
+
+        val widgets = section?.get("widgets")?.jsonArray
+        assertNotNull(widgets)
+
+        // Should have gauges for memory and disk cache
+        val gauges = widgets?.filter {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "gauge"
+        }
+        assertEquals(2, gauges?.size)
+
+        // Should have clear all button
+        val clearAllButton = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "button" &&
+            it.jsonObject["action"]?.jsonPrimitive?.content == "coil_clear_all"
+        }?.jsonObject
+        assertNotNull(clearAllButton)
+    }
+
+    @Test
+    fun `performancePreset creates multiple sections`() {
+        val builder = DashboardBuilder()
+        builder.performancePreset()
+
+        val result = builder.build() as JsonObject
+        val sections = result["sections"]?.jsonArray
+
+        assertNotNull(sections)
+        assertEquals(2, sections!!.size) // Memory and Threads
+
+        assertEquals("memory", sections[0].jsonObject["id"]?.jsonPrimitive?.content)
+        assertEquals("threads", sections[1].jsonObject["id"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `performancePreset includes chart when requested`() {
+        val builder = DashboardBuilder()
+        builder.performancePreset(includeCharts = true)
+
+        val result = builder.build() as JsonObject
+        val memorySection = result["sections"]?.jsonArray?.get(0)?.jsonObject
+        val widgets = memorySection?.get("widgets")?.jsonArray
+
+        val chart = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "chart"
+        }
+        assertNotNull(chart)
+    }
+
+    @Test
+    fun `deviceStatusPreset creates battery network storage sections`() {
+        val builder = DashboardBuilder()
+        builder.deviceStatusPreset()
+
+        val result = builder.build() as JsonObject
+        val sections = result["sections"]?.jsonArray
+
+        assertNotNull(sections)
+        assertEquals(3, sections!!.size)
+
+        assertEquals("battery", sections[0].jsonObject["id"]?.jsonPrimitive?.content)
+        assertEquals("network", sections[1].jsonObject["id"]?.jsonPrimitive?.content)
+        assertEquals("storage", sections[2].jsonObject["id"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `debuggingPreset creates logs and memory sections`() {
+        val builder = DashboardBuilder()
+        builder.debuggingPreset()
+
+        val result = builder.build() as JsonObject
+        val sections = result["sections"]?.jsonArray
+
+        assertNotNull(sections)
+        assertEquals(2, sections!!.size)
+
+        assertEquals("logs", sections[0].jsonObject["id"]?.jsonPrimitive?.content)
+        assertEquals("memory", sections[1].jsonObject["id"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `minimalPreset creates single status section`() {
+        val builder = DashboardBuilder()
+        builder.minimalPreset()
+
+        val result = builder.build() as JsonObject
+        val sections = result["sections"]?.jsonArray
+
+        assertNotNull(sections)
+        assertEquals(1, sections!!.size)
+        assertEquals("status", sections[0].jsonObject["id"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `fullSystemPreset creates all system sections`() {
+        val builder = DashboardBuilder()
+        builder.fullSystemPreset()
+
+        val result = builder.build() as JsonObject
+        val sections = result["sections"]?.jsonArray
+
+        assertNotNull(sections)
+        assertEquals(5, sections!!.size)
+    }
+
+    @Test
+    fun `alert configuration is serialized correctly`() {
+        val builder = DashboardBuilder()
+        builder.section("Test") {
+            row {
+                number(
+                    label = "Value",
+                    dataPath = "\$.value",
+                    alert = AlertConfig(
+                        condition = AlertCondition.gt("\$.value", 100),
+                        severity = AlertSeverity.CRITICAL,
+                        message = "Value too high!"
+                    )
+                )
+            }
+        }
+
+        val result = builder.build() as JsonObject
+        val widget = result["sections"]?.jsonArray?.get(0)?.jsonObject
+            ?.get("widgets")?.jsonArray?.get(0)?.jsonObject
+        val alert = widget?.get("alert")?.jsonObject
+
+        assertNotNull(alert)
+        assertEquals("critical", alert?.get("severity")?.jsonPrimitive?.content)
+        assertEquals("Value too high!", alert?.get("message")?.jsonPrimitive?.content)
+
+        val condition = alert?.get("condition")?.jsonObject
+        assertEquals("\$.value", condition?.get("path")?.jsonPrimitive?.content)
+        assertEquals("gt", condition?.get("operator")?.jsonPrimitive?.content)
+        assertEquals(100, condition?.get("value")?.jsonPrimitive?.content?.toInt())
+    }
+
+    @Test
+    fun `fullWidth property is serialized`() {
+        val builder = DashboardBuilder()
+        builder.section("Wide") {
+            fullWidth = true
+        }
+
+        val result = builder.build() as JsonObject
+        val section = result["sections"]?.jsonArray?.get(0)?.jsonObject
+
+        assertEquals(true, section?.get("full_width")?.jsonPrimitive?.content?.toBoolean())
+    }
 }
