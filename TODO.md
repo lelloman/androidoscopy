@@ -7,7 +7,7 @@
   - Format options: Plain text, JSON, CSV, Logcat format
   - Exports currently buffered logs (respects active filters)
   - Increase default log ring buffer from 5,000 to 50,000 entries
-- [ ] **Multi-machine support** (physical device on same LAN)
+- [x] **Multi-machine support** (physical device on same LAN)
   - Auto-detect local network IPs and include in TLS certificate SANs
   - bind_address already configurable (set to 0.0.0.0)
   - UDP discovery already broadcasts for device finding
