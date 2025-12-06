@@ -10,7 +10,7 @@
 ## 1. Additional Data Providers
 
 - [x] **BatteryDataProvider** - level, charging state, temperature, health
-- [ ] **StorageDataProvider** - app data size, cache size, available space
+- [x] **StorageDataProvider** - app data size, cache size, available space
 - [ ] **ThreadDataProvider** - active count, thread list
 - [ ] **Write unit tests for new data providers**
 
