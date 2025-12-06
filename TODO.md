@@ -98,4 +98,4 @@
   - Shows: worker class, state badge, tags, constraints, attempt count, next run time
   - Dashboard: `workManagerSection()` - table with live updates
   - Row action: cancel work
-- [ ] **Coil plugin** - Image cache stats and viewer
+- [x] **Coil plugin** - Image cache stats and viewer

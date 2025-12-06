@@ -707,6 +707,68 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * Coil image cache section.
+     * Displays memory and disk cache stats with clear actions.
+     * Requires: CoilDataProvider registered from coil module.
+     */
+    fun coilSection() {
+        section("Image Cache (Coil)") {
+            layout = Layout.STACK
+            collapsible = true
+
+            row {
+                gauge(
+                    label = "Memory Cache",
+                    valuePath = "\$.coil.memory_cache.size",
+                    maxPath = "\$.coil.memory_cache.max_size",
+                    format = Format.BYTES
+                )
+                gauge(
+                    label = "Disk Cache",
+                    valuePath = "\$.coil.disk_cache.size",
+                    maxPath = "\$.coil.disk_cache.max_size",
+                    format = Format.BYTES
+                )
+            }
+
+            row {
+                text(label = "Memory", dataPath = "\$.coil.memory_size_mb")
+                text(label = "Max", dataPath = "\$.coil.memory_max_mb")
+                percent(label = "Usage", dataPath = "\$.coil.memory_percent")
+            }
+
+            row {
+                text(label = "Disk", dataPath = "\$.coil.disk_size_mb")
+                text(label = "Max", dataPath = "\$.coil.disk_max_mb")
+                percent(label = "Usage", dataPath = "\$.coil.disk_percent")
+            }
+
+            actions {
+                button(
+                    label = "Refresh",
+                    action = "coil_refresh",
+                    style = ButtonStyle.SECONDARY
+                )
+                button(
+                    label = "Clear Memory",
+                    action = "coil_clear_memory",
+                    style = ButtonStyle.SECONDARY
+                )
+                button(
+                    label = "Clear Disk",
+                    action = "coil_clear_disk",
+                    style = ButtonStyle.SECONDARY
+                )
+                button(
+                    label = "Clear All",
+                    action = "coil_clear_all",
+                    style = ButtonStyle.DANGER
+                )
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK
