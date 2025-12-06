@@ -12,7 +12,7 @@
 - [x] **BatteryDataProvider** - level, charging state, temperature, health
 - [x] **StorageDataProvider** - app data size, cache size, available space
 - [x] **ThreadDataProvider** - active count, thread list
-- [ ] **Write unit tests for new data providers**
+- [x] **Write unit tests for new data providers**
 
 ## 2. Dashboard Templates
 
