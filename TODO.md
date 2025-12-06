@@ -56,7 +56,7 @@
   - Captures: method, URL, headers, status, duration, body size, errors
   - Dashboard: `networkRequestsSection()` - table with row action for details
   - Separate module (depends on OkHttp)
-- [ ] **SharedPreferences viewer**
+- [x] **SharedPreferences viewer**
   - List all SharedPreferences files, show key-value pairs with types
   - Edit: modify values, add new keys, delete keys (type-aware inputs)
   - Dashboard: `sharedPreferencesSection()` or `sharedPreferencesSection("name")`

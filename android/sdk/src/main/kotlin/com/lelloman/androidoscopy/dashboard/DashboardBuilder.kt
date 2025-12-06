@@ -361,6 +361,68 @@ class DashboardBuilder {
         }
     }
 
+    /**
+     * SharedPreferences viewer section.
+     * Displays all SharedPreferences entries with edit/delete actions.
+     * Requires: SharedPreferencesDataProvider registered with action handlers.
+     *
+     * @param prefsName Optional specific SharedPreferences file to show. If null, shows all.
+     */
+    fun sharedPreferencesSection(prefsName: String? = null) {
+        val dataKey = if (prefsName != null) "prefs_$prefsName" else "prefs"
+        section("SharedPreferences" + (prefsName?.let { " ($it)" } ?: "")) {
+            layout = Layout.STACK
+            fullWidth = true
+            collapsible = true
+
+            row {
+                number(
+                    label = "Files",
+                    dataPath = "\$.$dataKey.file_count"
+                )
+                number(
+                    label = "Entries",
+                    dataPath = "\$.$dataKey.entry_count"
+                )
+            }
+
+            actions {
+                button(
+                    label = "Refresh",
+                    action = "prefs_refresh",
+                    style = ButtonStyle.SECONDARY
+                )
+                button(
+                    label = "Add Entry",
+                    action = "prefs_add",
+                    style = ButtonStyle.PRIMARY
+                ) {
+                    title = "Add Preference"
+                    textField("prefs_file", "File Name", prefsName ?: "")
+                    textField("key", "Key")
+                    textField("value", "Value")
+                    selectField("type", "Type", listOf(
+                        SelectOption("String", "String"),
+                        SelectOption("Int", "Integer"),
+                        SelectOption("Long", "Long"),
+                        SelectOption("Float", "Float"),
+                        SelectOption("Boolean", "Boolean"),
+                        SelectOption("StringSet", "String Set (comma-separated)")
+                    ))
+                }
+            }
+
+            table(dataPath = "\$.$dataKey.entries") {
+                column("prefs_file", "File")
+                column("key", "Key")
+                column("value", "Value")
+                column("type", "Type")
+                rowAction("prefs_edit", "Edit")
+                rowAction("prefs_delete", "Delete")
+            }
+        }
+    }
+
     fun cacheSection(caches: List<CacheConfig>) {
         section("Caches") {
             layout = Layout.STACK
