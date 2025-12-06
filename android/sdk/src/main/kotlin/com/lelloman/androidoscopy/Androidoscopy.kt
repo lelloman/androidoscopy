@@ -8,6 +8,8 @@ import com.lelloman.androidoscopy.connection.DiscoveryListener
 import com.lelloman.androidoscopy.connection.ReconnectionManager
 import com.lelloman.androidoscopy.connection.WebSocketClient
 import com.lelloman.androidoscopy.connection.WebSocketEvent
+import com.lelloman.androidoscopy.data.DataProvider
+import com.lelloman.androidoscopy.data.DataProviderManager
 import com.lelloman.androidoscopy.protocol.ActionMessage
 import com.lelloman.androidoscopy.protocol.ActionResultMessage
 import com.lelloman.androidoscopy.protocol.ActionResultPayload
@@ -65,6 +67,14 @@ object Androidoscopy {
         androidoscopyImpl?.updateData(block) ?: notInitializedError()
     }
 
+    fun registerDataProvider(provider: DataProvider) {
+        androidoscopyImpl?.registerDataProvider(provider) ?: notInitializedError()
+    }
+
+    fun unregisterDataProvider(provider: DataProvider) {
+        androidoscopyImpl?.unregisterDataProvider(provider) ?: notInitializedError()
+    }
+
     private fun notInitializedError(): Nothing = error("Androidoscopy was not initialized")
 
     internal class AndroidoscopyImpl(
@@ -88,6 +98,10 @@ object Androidoscopy {
         }
 
         private val currentData = mutableMapOf<String, Any>()
+        private val dataProviderManager = DataProviderManager(scope) { key, data ->
+            currentData[key] = data
+            sendData()
+        }
 
         fun connect() {
             if (isConnecting) return
@@ -113,6 +127,7 @@ object Androidoscopy {
         }
 
         fun disconnect() {
+            dataProviderManager.stop()
             webSocketClient?.disconnect()
             webSocketClient = null
             sessionId = null
@@ -122,6 +137,14 @@ object Androidoscopy {
         fun updateData(block: MutableMap<String, Any>.() -> Unit) {
             currentData.block()
             sendData()
+        }
+
+        fun registerDataProvider(provider: DataProvider) {
+            dataProviderManager.register(provider)
+        }
+
+        fun unregisterDataProvider(provider: DataProvider) {
+            dataProviderManager.unregister(provider)
         }
 
         fun log(level: LogLevel, tag: String?, message: String, throwable: Throwable? = null) {
@@ -160,12 +183,14 @@ object Androidoscopy {
                 }
 
                 is WebSocketEvent.Closed, is WebSocketEvent.Closing -> {
+                    dataProviderManager.stop()
                     _connectionState.value = ConnectionState.Disconnected
                     isConnecting = false
                     scheduleReconnect()
                 }
 
                 is WebSocketEvent.Error -> {
+                    dataProviderManager.stop()
                     _connectionState.value =
                         ConnectionState.Error(event.throwable.message ?: "Unknown error")
                     isConnecting = false
@@ -183,6 +208,7 @@ object Androidoscopy {
                         _connectionState.value =
                             ConnectionState.Connected(message.payload.sessionId)
                         isConnecting = false
+                        dataProviderManager.start()
                     }
 
                     is ActionMessage -> {
