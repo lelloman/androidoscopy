@@ -22,6 +22,7 @@
     let isFullWidth = $derived(
         section.full_width ||
         section.layout === 'stack' ||
+        section.layout === 'flow' ||
         section.widget?.type === 'log_viewer' ||
         section.widget?.type === 'network_request_viewer' ||
         section.widget?.type === 'shared_preferences_viewer' ||
@@ -148,6 +149,12 @@
         display: flex;
         flex-direction: column;
         gap: 1rem;
+    }
+
+    .content.layout-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
 
     @media (min-width: 1200px) {
