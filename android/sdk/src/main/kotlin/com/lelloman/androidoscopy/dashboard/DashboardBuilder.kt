@@ -359,85 +359,7 @@ class DashboardBuilder {
             fullWidth = true
             collapsible = true
 
-            row {
-                number(
-                    label = "Databases",
-                    dataPath = "\$.$dataKey.database_count"
-                )
-                text(
-                    label = "Selected DB",
-                    dataPath = "\$.$dataKey.selected_database"
-                )
-                number(
-                    label = "Tables",
-                    dataPath = "\$.$dataKey.table_count"
-                )
-                text(
-                    label = "Selected Table",
-                    dataPath = "\$.$dataKey.selected_table"
-                )
-            }
-
-            row {
-                number(
-                    label = "Columns",
-                    dataPath = "\$.$dataKey.column_count"
-                )
-                number(
-                    label = "Total Rows",
-                    dataPath = "\$.$dataKey.row_count"
-                )
-                number(
-                    label = "Page",
-                    dataPath = "\$.$dataKey.current_page"
-                )
-                number(
-                    label = "Total Pages",
-                    dataPath = "\$.$dataKey.total_pages"
-                )
-            }
-
-            actions {
-                button(
-                    label = "Refresh",
-                    action = "sqlite_refresh",
-                    style = ButtonStyle.SECONDARY
-                )
-                button(
-                    label = "Run Query",
-                    action = "sqlite_query",
-                    style = ButtonStyle.PRIMARY
-                ) {
-                    title = "Execute SQL Query"
-                    textField("query", "SQL Query", "SELECT * FROM ")
-                }
-                button(
-                    label = "Previous",
-                    action = "sqlite_prev_page",
-                    style = ButtonStyle.SECONDARY
-                )
-                button(
-                    label = "Next",
-                    action = "sqlite_next_page",
-                    style = ButtonStyle.SECONDARY
-                )
-            }
-
-            // Schema table
-            table(dataPath = "\$.$dataKey.schema") {
-                column("name", "Column")
-                column("type", "Type")
-                column("notnull", "Not Null")
-                column("pk", "Primary Key")
-                column("default_value", "Default")
-            }
-
-            // Data table - dynamic columns based on selected table
-            table(dataPath = "\$.$dataKey.data") {
-                // Note: columns will be dynamically determined by the dashboard
-                // based on the actual data returned
-                rowAction("sqlite_delete", "Delete")
-            }
+            sqliteViewer(dataPath = "\$.$dataKey")
         }
     }
 
@@ -752,6 +674,10 @@ class SectionBuilder(private val title: String) {
 
     fun sharedPreferencesViewer(dataPath: String) {
         widgets.add(WidgetBuilder.sharedPreferencesViewer(dataPath))
+    }
+
+    fun sqliteViewer(dataPath: String) {
+        widgets.add(WidgetBuilder.sqliteViewer(dataPath))
     }
 
     fun build(): JsonElement = buildJsonObject {
@@ -1093,6 +1019,11 @@ object WidgetBuilder {
 
     fun sharedPreferencesViewer(dataPath: String): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("shared_preferences_viewer"))
+        put("data_path", JsonPrimitive(dataPath))
+    }
+
+    fun sqliteViewer(dataPath: String): JsonElement = buildJsonObject {
+        put("type", JsonPrimitive("sqlite_viewer"))
         put("data_path", JsonPrimitive(dataPath))
     }
 

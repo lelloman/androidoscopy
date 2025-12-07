@@ -425,12 +425,12 @@ class DashboardBuilderTest {
         val widgets = section?.get("widgets")?.jsonArray
         assertNotNull(widgets)
 
-        // Should have query button
-        val queryButton = widgets?.firstOrNull {
-            it.jsonObject["type"]?.jsonPrimitive?.content == "button" &&
-            it.jsonObject["action"]?.jsonPrimitive?.content == "sqlite_query"
+        // Should have sqlite_viewer widget
+        val viewer = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "sqlite_viewer"
         }?.jsonObject
-        assertNotNull(queryButton)
+        assertNotNull(viewer)
+        assertEquals("\$.sqlite", viewer?.get("data_path")?.jsonPrimitive?.content)
     }
 
     @Test

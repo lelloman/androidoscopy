@@ -1,9 +1,10 @@
 <script lang="ts">
-    import type { Section, LogEntry, NetworkRequestViewerWidget, SharedPreferencesViewerWidget } from '../types/protocol';
+    import type { Section, LogEntry, NetworkRequestViewerWidget, SharedPreferencesViewerWidget, SqliteViewerWidget } from '../types/protocol';
     import Widget from './Widget.svelte';
     import LogViewer from '../widgets/LogViewer.svelte';
     import NetworkRequestViewer from '../widgets/NetworkRequestViewer.svelte';
     import SharedPreferencesViewer from '../widgets/SharedPreferencesViewer.svelte';
+    import SqliteViewer from '../widgets/SqliteViewer.svelte';
 
     interface Props {
         section: Section;
@@ -23,7 +24,8 @@
         section.widget?.type === 'log_viewer' ||
         section.widget?.type === 'network_request_viewer' ||
         section.widget?.type === 'shared_preferences_viewer' ||
-        section.widgets?.some(w => w.type === 'log_viewer' || w.type === 'table' || w.type === 'network_request_viewer' || w.type === 'shared_preferences_viewer')
+        section.widget?.type === 'sqlite_viewer' ||
+        section.widgets?.some(w => w.type === 'log_viewer' || w.type === 'table' || w.type === 'network_request_viewer' || w.type === 'shared_preferences_viewer' || w.type === 'sqlite_viewer')
     );
 
     function toggleCollapse() {
@@ -57,6 +59,8 @@
                     <NetworkRequestViewer widget={section.widget as NetworkRequestViewerWidget} {data} {sessionId} />
                 {:else if section.widget.type === 'shared_preferences_viewer'}
                     <SharedPreferencesViewer widget={section.widget as SharedPreferencesViewerWidget} {data} {sessionId} />
+                {:else if section.widget.type === 'sqlite_viewer'}
+                    <SqliteViewer widget={section.widget as SqliteViewerWidget} {data} {sessionId} />
                 {:else}
                     <Widget widget={section.widget} {data} {sessionId} />
                 {/if}
@@ -68,6 +72,8 @@
                         <NetworkRequestViewer widget={widget as NetworkRequestViewerWidget} {data} {sessionId} />
                     {:else if widget.type === 'shared_preferences_viewer'}
                         <SharedPreferencesViewer widget={widget as SharedPreferencesViewerWidget} {data} {sessionId} />
+                    {:else if widget.type === 'sqlite_viewer'}
+                        <SqliteViewer widget={widget as SqliteViewerWidget} {data} {sessionId} />
                     {:else}
                         <Widget {widget} {data} {sessionId} />
                     {/if}

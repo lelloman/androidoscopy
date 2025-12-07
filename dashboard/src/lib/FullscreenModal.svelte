@@ -1,11 +1,12 @@
 <script lang="ts">
     import { fullscreenWidget, closeFullscreen } from './stores/fullscreen';
-    import type { LogEntry, ChartWidget as ChartWidgetType, TableWidget as TableWidgetType, NetworkRequestViewerWidget as NetworkRequestViewerWidgetType, SharedPreferencesViewerWidget as SharedPreferencesViewerWidgetType } from './types/protocol';
+    import type { LogEntry, ChartWidget as ChartWidgetType, TableWidget as TableWidgetType, NetworkRequestViewerWidget as NetworkRequestViewerWidgetType, SharedPreferencesViewerWidget as SharedPreferencesViewerWidgetType, SqliteViewerWidget as SqliteViewerWidgetType } from './types/protocol';
     import LogViewer from './widgets/LogViewer.svelte';
     import Chart from './widgets/Chart.svelte';
     import Table from './widgets/Table.svelte';
     import NetworkRequestViewer from './widgets/NetworkRequestViewer.svelte';
     import SharedPreferencesViewer from './widgets/SharedPreferencesViewer.svelte';
+    import SqliteViewer from './widgets/SqliteViewer.svelte';
 
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Escape' && $fullscreenWidget.isOpen) {
@@ -78,6 +79,15 @@
                 <div class="widget-container prefs-fullscreen">
                     <SharedPreferencesViewer
                         widget={$fullscreenWidget.props.widget as SharedPreferencesViewerWidgetType}
+                        data={$fullscreenWidget.props.data}
+                        sessionId={$fullscreenWidget.props.sessionId as string}
+                        showExpandButton={false}
+                    />
+                </div>
+            {:else if $fullscreenWidget.widgetType === 'sqlite_viewer'}
+                <div class="widget-container sqlite-fullscreen">
+                    <SqliteViewer
+                        widget={$fullscreenWidget.props.widget as SqliteViewerWidgetType}
                         data={$fullscreenWidget.props.data}
                         sessionId={$fullscreenWidget.props.sessionId as string}
                         showExpandButton={false}
@@ -187,6 +197,10 @@
     }
 
     .prefs-fullscreen :global(.prefs-viewer) {
+        height: 100%;
+    }
+
+    .sqlite-fullscreen :global(.sqlite-viewer) {
         height: 100%;
     }
 </style>

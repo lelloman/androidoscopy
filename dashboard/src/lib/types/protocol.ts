@@ -49,7 +49,8 @@ export type Widget =
     | LogViewerWidget
     | ChartWidget
     | NetworkRequestViewerWidget
-    | SharedPreferencesViewerWidget;
+    | SharedPreferencesViewerWidget
+    | SqliteViewerWidget;
 
 export interface AlertConfig {
     condition: {
@@ -227,6 +228,20 @@ export interface SharedPreferencesEntry {
     value: string;
     type: 'String' | 'Int' | 'Long' | 'Float' | 'Boolean' | 'StringSet';
     prefs_file: string;
+}
+
+export interface SqliteViewerWidget extends BaseWidget {
+    type: 'sqlite_viewer';
+    data_path: string;
+}
+
+export interface SqliteColumnSchema {
+    cid: number;
+    name: string;
+    type: string;
+    notnull: boolean;
+    default_value: string;
+    pk: boolean;
 }
 
 export interface VisibleWhen {

@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 
 export interface FullscreenState {
     isOpen: boolean;
-    widgetType: 'logviewer' | 'chart' | 'table' | 'network_request_viewer' | 'shared_preferences_viewer' | null;
+    widgetType: 'logviewer' | 'chart' | 'table' | 'network_request_viewer' | 'shared_preferences_viewer' | 'sqlite_viewer' | null;
     props: Record<string, unknown>;
 }
 
