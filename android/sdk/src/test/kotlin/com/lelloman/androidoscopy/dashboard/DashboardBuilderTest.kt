@@ -384,12 +384,12 @@ class DashboardBuilderTest {
         val widgets = section?.get("widgets")?.jsonArray
         assertNotNull(widgets)
 
-        // Should have buttons for add entry
-        val button = widgets?.firstOrNull {
-            it.jsonObject["type"]?.jsonPrimitive?.content == "button" &&
-            it.jsonObject["action"]?.jsonPrimitive?.content == "prefs_add"
+        // Should have shared_preferences_viewer widget
+        val viewer = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "shared_preferences_viewer"
         }?.jsonObject
-        assertNotNull(button)
+        assertNotNull(viewer)
+        assertEquals("\$.prefs", viewer?.get("data_path")?.jsonPrimitive?.content)
     }
 
     @Test
@@ -402,12 +402,13 @@ class DashboardBuilderTest {
 
         assertEquals("SharedPreferences (my_prefs)", section?.get("title")?.jsonPrimitive?.content)
 
-        // Check data path uses prefs_my_prefs
+        // Check shared_preferences_viewer uses correct data path
         val widgets = section?.get("widgets")?.jsonArray
-        val numberWidget = widgets?.firstOrNull {
-            it.jsonObject["type"]?.jsonPrimitive?.content == "number"
+        val viewer = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "shared_preferences_viewer"
         }?.jsonObject
-        assertTrue(numberWidget?.get("data_path")?.jsonPrimitive?.content?.contains("prefs_my_prefs") == true)
+        assertNotNull(viewer)
+        assertEquals("\$.prefs_my_prefs", viewer?.get("data_path")?.jsonPrimitive?.content)
     }
 
     @Test

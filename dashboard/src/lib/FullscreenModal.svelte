@@ -1,10 +1,11 @@
 <script lang="ts">
     import { fullscreenWidget, closeFullscreen } from './stores/fullscreen';
-    import type { LogEntry, ChartWidget as ChartWidgetType, TableWidget as TableWidgetType, NetworkRequestViewerWidget as NetworkRequestViewerWidgetType } from './types/protocol';
+    import type { LogEntry, ChartWidget as ChartWidgetType, TableWidget as TableWidgetType, NetworkRequestViewerWidget as NetworkRequestViewerWidgetType, SharedPreferencesViewerWidget as SharedPreferencesViewerWidgetType } from './types/protocol';
     import LogViewer from './widgets/LogViewer.svelte';
     import Chart from './widgets/Chart.svelte';
     import Table from './widgets/Table.svelte';
     import NetworkRequestViewer from './widgets/NetworkRequestViewer.svelte';
+    import SharedPreferencesViewer from './widgets/SharedPreferencesViewer.svelte';
 
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === 'Escape' && $fullscreenWidget.isOpen) {
@@ -68,6 +69,15 @@
                 <div class="widget-container network-fullscreen">
                     <NetworkRequestViewer
                         widget={$fullscreenWidget.props.widget as NetworkRequestViewerWidgetType}
+                        data={$fullscreenWidget.props.data}
+                        sessionId={$fullscreenWidget.props.sessionId as string}
+                        showExpandButton={false}
+                    />
+                </div>
+            {:else if $fullscreenWidget.widgetType === 'shared_preferences_viewer'}
+                <div class="widget-container prefs-fullscreen">
+                    <SharedPreferencesViewer
+                        widget={$fullscreenWidget.props.widget as SharedPreferencesViewerWidgetType}
                         data={$fullscreenWidget.props.data}
                         sessionId={$fullscreenWidget.props.sessionId as string}
                         showExpandButton={false}
@@ -174,5 +184,9 @@
 
     .network-fullscreen :global(.request-detail) {
         max-height: 40%;
+    }
+
+    .prefs-fullscreen :global(.prefs-viewer) {
+        height: 100%;
     }
 </style>

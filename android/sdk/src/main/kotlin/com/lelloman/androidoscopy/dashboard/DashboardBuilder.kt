@@ -329,7 +329,7 @@ class DashboardBuilder {
 
     /**
      * SharedPreferences viewer section.
-     * Displays all SharedPreferences entries with edit/delete actions.
+     * Displays all SharedPreferences entries with file selection, edit/delete actions.
      * Requires: SharedPreferencesDataProvider registered with action handlers.
      *
      * @param prefsName Optional specific SharedPreferences file to show. If null, shows all.
@@ -341,51 +341,7 @@ class DashboardBuilder {
             fullWidth = true
             collapsible = true
 
-            row {
-                number(
-                    label = "Files",
-                    dataPath = "\$.$dataKey.file_count"
-                )
-                number(
-                    label = "Entries",
-                    dataPath = "\$.$dataKey.entry_count"
-                )
-            }
-
-            actions {
-                button(
-                    label = "Refresh",
-                    action = "prefs_refresh",
-                    style = ButtonStyle.SECONDARY
-                )
-                button(
-                    label = "Add Entry",
-                    action = "prefs_add",
-                    style = ButtonStyle.PRIMARY
-                ) {
-                    title = "Add Preference"
-                    textField("prefs_file", "File Name", prefsName ?: "")
-                    textField("key", "Key")
-                    textField("value", "Value")
-                    selectField("type", "Type", listOf(
-                        SelectOption("String", "String"),
-                        SelectOption("Int", "Integer"),
-                        SelectOption("Long", "Long"),
-                        SelectOption("Float", "Float"),
-                        SelectOption("Boolean", "Boolean"),
-                        SelectOption("StringSet", "String Set (comma-separated)")
-                    ))
-                }
-            }
-
-            table(dataPath = "\$.$dataKey.entries") {
-                column("prefs_file", "File")
-                column("key", "Key")
-                column("value", "Value")
-                column("type", "Type")
-                rowAction("prefs_edit", "Edit")
-                rowAction("prefs_delete", "Delete")
-            }
+            sharedPreferencesViewer(dataPath = "\$.$dataKey")
         }
     }
 
@@ -794,6 +750,10 @@ class SectionBuilder(private val title: String) {
         widgets.add(WidgetBuilder.networkRequestViewer(dataPath))
     }
 
+    fun sharedPreferencesViewer(dataPath: String) {
+        widgets.add(WidgetBuilder.sharedPreferencesViewer(dataPath))
+    }
+
     fun build(): JsonElement = buildJsonObject {
         put("id", JsonPrimitive(title.lowercase().replace(" ", "_")))
         put("title", JsonPrimitive(title))
@@ -1128,6 +1088,11 @@ object WidgetBuilder {
 
     fun networkRequestViewer(dataPath: String): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("network_request_viewer"))
+        put("data_path", JsonPrimitive(dataPath))
+    }
+
+    fun sharedPreferencesViewer(dataPath: String): JsonElement = buildJsonObject {
+        put("type", JsonPrimitive("shared_preferences_viewer"))
         put("data_path", JsonPrimitive(dataPath))
     }
 

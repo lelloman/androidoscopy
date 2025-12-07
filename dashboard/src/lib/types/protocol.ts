@@ -48,7 +48,8 @@ export type Widget =
     | ButtonWidget
     | LogViewerWidget
     | ChartWidget
-    | NetworkRequestViewerWidget;
+    | NetworkRequestViewerWidget
+    | SharedPreferencesViewerWidget;
 
 export interface AlertConfig {
     condition: {
@@ -209,6 +210,23 @@ export interface NetworkRequest {
     response_body?: string;
     is_success: boolean;
     is_error: boolean;
+}
+
+export interface SharedPreferencesViewerWidget extends BaseWidget {
+    type: 'shared_preferences_viewer';
+    data_path: string;
+}
+
+export interface SharedPreferencesFile {
+    name: string;
+    entries: SharedPreferencesEntry[];
+}
+
+export interface SharedPreferencesEntry {
+    key: string;
+    value: string;
+    type: 'String' | 'Int' | 'Long' | 'Float' | 'Boolean' | 'StringSet';
+    prefs_file: string;
 }
 
 export interface VisibleWhen {
