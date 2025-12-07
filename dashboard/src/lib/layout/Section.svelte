@@ -1,10 +1,11 @@
 <script lang="ts">
-    import type { Section, LogEntry, NetworkRequestViewerWidget, SharedPreferencesViewerWidget, SqliteViewerWidget } from '../types/protocol';
+    import type { Section, LogEntry, NetworkRequestViewerWidget, SharedPreferencesViewerWidget, SqliteViewerWidget, PermissionsViewerWidget } from '../types/protocol';
     import Widget from './Widget.svelte';
     import LogViewer from '../widgets/LogViewer.svelte';
     import NetworkRequestViewer from '../widgets/NetworkRequestViewer.svelte';
     import SharedPreferencesViewer from '../widgets/SharedPreferencesViewer.svelte';
     import SqliteViewer from '../widgets/SqliteViewer.svelte';
+    import PermissionsViewer from '../widgets/PermissionsViewer.svelte';
 
     interface Props {
         section: Section;
@@ -61,6 +62,8 @@
                     <SharedPreferencesViewer widget={section.widget as SharedPreferencesViewerWidget} {data} {sessionId} />
                 {:else if section.widget.type === 'sqlite_viewer'}
                     <SqliteViewer widget={section.widget as SqliteViewerWidget} {data} {sessionId} />
+                {:else if section.widget.type === 'permissions_viewer'}
+                    <PermissionsViewer widget={section.widget as PermissionsViewerWidget} {data} {sessionId} />
                 {:else}
                     <Widget widget={section.widget} {data} {sessionId} />
                 {/if}
@@ -74,6 +77,8 @@
                         <SharedPreferencesViewer widget={widget as SharedPreferencesViewerWidget} {data} {sessionId} />
                     {:else if widget.type === 'sqlite_viewer'}
                         <SqliteViewer widget={widget as SqliteViewerWidget} {data} {sessionId} />
+                    {:else if widget.type === 'permissions_viewer'}
+                        <PermissionsViewer widget={widget as PermissionsViewerWidget} {data} {sessionId} />
                     {:else}
                         <Widget {widget} {data} {sessionId} />
                     {/if}

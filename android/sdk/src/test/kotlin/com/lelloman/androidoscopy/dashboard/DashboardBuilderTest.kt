@@ -447,12 +447,12 @@ class DashboardBuilderTest {
         val widgets = section?.get("widgets")?.jsonArray
         assertNotNull(widgets)
 
-        // Should have table with permissions data
-        val table = widgets?.firstOrNull {
-            it.jsonObject["type"]?.jsonPrimitive?.content == "table"
+        // Should have permissions_viewer widget
+        val viewer = widgets?.firstOrNull {
+            it.jsonObject["type"]?.jsonPrimitive?.content == "permissions_viewer"
         }?.jsonObject
-        assertNotNull(table)
-        assertEquals("\$.permissions.permissions", table?.get("data_path")?.jsonPrimitive?.content)
+        assertNotNull(viewer)
+        assertEquals("\$.permissions", viewer?.get("data_path")?.jsonPrimitive?.content)
     }
 
     @Test

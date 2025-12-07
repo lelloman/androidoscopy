@@ -365,7 +365,7 @@ class DashboardBuilder {
 
     /**
      * Permissions section.
-     * Displays declared app permissions with grant status and protection level.
+     * Displays declared app permissions grouped by grant status as chip cards.
      * Requires: PermissionsDataProvider registered.
      */
     fun permissionsSection() {
@@ -374,44 +374,7 @@ class DashboardBuilder {
             fullWidth = true
             collapsible = true
 
-            row {
-                number(
-                    label = "Total",
-                    dataPath = "\$.permissions.total_count"
-                )
-                number(
-                    label = "Granted",
-                    dataPath = "\$.permissions.granted_count"
-                )
-                number(
-                    label = "Denied",
-                    dataPath = "\$.permissions.denied_count",
-                    alert = AlertConfig(
-                        condition = AlertCondition.gt("\$.permissions.denied_count", 0),
-                        severity = AlertSeverity.INFO,
-                        message = "Some permissions are denied"
-                    )
-                )
-                number(
-                    label = "Dangerous",
-                    dataPath = "\$.permissions.dangerous_count"
-                )
-            }
-
-            actions {
-                button(
-                    label = "Refresh",
-                    action = "permissions_refresh",
-                    style = ButtonStyle.SECONDARY
-                )
-            }
-
-            table(dataPath = "\$.permissions.permissions") {
-                column("label", "Permission")
-                column("status", "Status")
-                column("protection_level", "Level")
-                column("group", "Group")
-            }
+            permissionsViewer(dataPath = "\$.permissions")
         }
     }
 
@@ -678,6 +641,10 @@ class SectionBuilder(private val title: String) {
 
     fun sqliteViewer(dataPath: String) {
         widgets.add(WidgetBuilder.sqliteViewer(dataPath))
+    }
+
+    fun permissionsViewer(dataPath: String) {
+        widgets.add(WidgetBuilder.permissionsViewer(dataPath))
     }
 
     fun build(): JsonElement = buildJsonObject {
@@ -1024,6 +991,11 @@ object WidgetBuilder {
 
     fun sqliteViewer(dataPath: String): JsonElement = buildJsonObject {
         put("type", JsonPrimitive("sqlite_viewer"))
+        put("data_path", JsonPrimitive(dataPath))
+    }
+
+    fun permissionsViewer(dataPath: String): JsonElement = buildJsonObject {
+        put("type", JsonPrimitive("permissions_viewer"))
         put("data_path", JsonPrimitive(dataPath))
     }
 

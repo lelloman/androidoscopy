@@ -50,7 +50,8 @@ export type Widget =
     | ChartWidget
     | NetworkRequestViewerWidget
     | SharedPreferencesViewerWidget
-    | SqliteViewerWidget;
+    | SqliteViewerWidget
+    | PermissionsViewerWidget;
 
 export interface AlertConfig {
     condition: {
@@ -242,6 +243,17 @@ export interface SqliteColumnSchema {
     notnull: boolean;
     default_value: string;
     pk: boolean;
+}
+
+export interface PermissionsViewerWidget extends BaseWidget {
+    type: 'permissions_viewer';
+    data_path: string;
+}
+
+export interface PermissionEntry {
+    name: string;
+    label: string;
+    status: 'GRANTED' | 'DENIED';
 }
 
 export interface VisibleWhen {
