@@ -2,16 +2,18 @@ name: E2E Tests CI
 
 on:
   push:
-    branches: [main, implementation]
+    branches: [master, implementation]
     paths:
       - 'e2e/**'
       - 'server/**'
+      - 'dashboard/**'
       - '.github/workflows/e2e.yml'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'e2e/**'
       - 'server/**'
+      - 'dashboard/**'
       - '.github/workflows/e2e.yml'
 
 env:

@@ -2,12 +2,12 @@ name: SDK CI
 
 on:
   push:
-    branches: [main, implementation]
+    branches: [master, implementation]
     paths:
       - 'android/**'
       - '.github/workflows/sdk.yml'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'android/**'
       - '.github/workflows/sdk.yml'
