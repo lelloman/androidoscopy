@@ -2,7 +2,11 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    `maven-publish`
 }
+
+group = "com.github.lelloman.androidoscopy"
+version = "1.0.0"
 
 android {
     namespace = "com.lelloman.androidoscopy"
@@ -44,4 +48,17 @@ dependencies {
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "com.github.lelloman.androidoscopy"
+                artifactId = "sdk"
+                version = project.version.toString()
+            }
+        }
+    }
 }
