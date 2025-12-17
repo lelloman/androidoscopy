@@ -1,15 +1,17 @@
 use axum::{routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
+use clap::{Parser, Subcommand};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use tower_http::services::{ServeDir, ServeFile};
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
+mod dashboard;
 mod discovery;
 mod handlers;
 mod protocol;
+mod service;
 mod session;
 mod state;
 mod tls;
@@ -17,8 +19,54 @@ mod tls;
 use config::Config;
 use state::AppState;
 
+#[derive(Parser)]
+#[command(name = "androidoscopy-server")]
+#[command(about = "Androidoscopy development server", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Run the server (default)
+    Run,
+    /// Install as a systemd user service
+    Install,
+    /// Uninstall the systemd user service
+    Uninstall,
+    /// Show service status
+    Status,
+}
+
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
+
+    match cli.command.unwrap_or(Commands::Run) {
+        Commands::Run => run_server().await,
+        Commands::Install => {
+            if let Err(e) = service::install() {
+                eprintln!("Installation failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Uninstall => {
+            if let Err(e) = service::uninstall() {
+                eprintln!("Uninstallation failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Status => {
+            if let Err(e) = service::status() {
+                eprintln!("Failed to get status: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
+async fn run_server() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -39,21 +87,20 @@ async fn main() {
         });
     }
 
-    let bind_addr: std::net::IpAddr = config.server.bind_address.parse().unwrap_or([127, 0, 0, 1].into());
+    let bind_addr: std::net::IpAddr = config
+        .server
+        .bind_address
+        .parse()
+        .unwrap_or([127, 0, 0, 1].into());
 
-    // Start HTTP server for dashboard (browser-friendly, no cert warnings)
+    // Start HTTP server for dashboard with embedded assets
     let http_addr = SocketAddr::from((bind_addr, config.server.http_port));
     let http_state = state.clone();
-    let static_dir = config.dashboard.static_dir.clone();
 
     tokio::spawn(async move {
-        let index_path = format!("{}/index.html", static_dir);
-        let serve_dir = ServeDir::new(&static_dir)
-            .not_found_service(ServeFile::new(&index_path));
-
         let http_app = Router::new()
             .route("/ws/dashboard", get(handlers::handle_dashboard_ws))
-            .fallback_service(serve_dir)
+            .fallback(dashboard::serve_embedded)
             .with_state(http_state);
 
         let listener = TcpListener::bind(http_addr).await.unwrap();
@@ -68,7 +115,10 @@ async fn main() {
         let (cert_path, key_path) = match tls::ensure_certificates(&config.server.tls) {
             Ok(paths) => paths,
             Err(e) => {
-                warn!("Failed to setup TLS certificates: {}. Falling back to WS.", e);
+                warn!(
+                    "Failed to setup TLS certificates: {}. Falling back to WS.",
+                    e
+                );
                 start_ws_server(wss_addr, state).await;
                 return;
             }

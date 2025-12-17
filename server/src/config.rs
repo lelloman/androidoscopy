@@ -10,8 +10,6 @@ pub struct Config {
     pub session: SessionConfig,
     #[serde(default)]
     pub logging: LoggingConfig,
-    #[serde(default)]
-    pub dashboard: DashboardConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,12 +54,6 @@ pub struct SessionConfig {
 pub struct LoggingConfig {
     #[serde(default = "default_log_level")]
     pub level: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct DashboardConfig {
-    #[serde(default = "default_static_dir")]
-    pub static_dir: String,
 }
 
 fn default_websocket_port() -> u16 {
@@ -122,17 +114,12 @@ fn default_log_level() -> String {
     "info".to_string()
 }
 
-fn default_static_dir() -> String {
-    "../dashboard/dist".to_string()
-}
-
 impl Default for Config {
     fn default() -> Self {
         Self {
             server: ServerConfig::default(),
             session: SessionConfig::default(),
             logging: LoggingConfig::default(),
-            dashboard: DashboardConfig::default(),
         }
     }
 }
@@ -175,14 +162,6 @@ impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             level: default_log_level(),
-        }
-    }
-}
-
-impl Default for DashboardConfig {
-    fn default() -> Self {
-        Self {
-            static_dir: default_static_dir(),
         }
     }
 }

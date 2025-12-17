@@ -23,8 +23,29 @@ cargo run --release
 ```
 
 The server will start on:
-- WebSocket: `ws://localhost:9999`
-- Dashboard: `http://localhost:8080`
+- WebSocket: `wss://localhost:8889`
+- Dashboard: `http://localhost:8880`
+
+#### Install as a Service (optional)
+
+To run the server automatically in the background:
+
+```bash
+# Install as systemd user service
+androidoscopy-server install
+
+# Start the service
+systemctl --user start androidoscopy
+
+# Enable on login (optional)
+systemctl --user enable androidoscopy
+
+# Check status
+androidoscopy-server status
+
+# Uninstall
+androidoscopy-server uninstall
+```
 
 ### 2. Add the SDK to Your Android App
 
@@ -174,13 +195,14 @@ The server can be configured via `~/.androidoscopy/config.toml`:
 
 ```toml
 [server]
-http_port = 8080
-websocket_port = 9999
-udp_discovery_enabled = true
+http_port = 8880              # Dashboard HTTP port
+websocket_port = 8889         # Android app WebSocket port
+bind_address = "0.0.0.0"      # Listen on all interfaces (for physical devices)
+udp_discovery_enabled = true  # Broadcast for device discovery
 
 [session]
 data_buffer_size = 1000
-log_buffer_size = 5000
+log_buffer_size = 50000
 ended_session_ttl_seconds = 3600
 ```
 
