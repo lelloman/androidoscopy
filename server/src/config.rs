@@ -73,7 +73,7 @@ fn default_http_port() -> u16 {
 }
 
 fn default_bind_address() -> String {
-    "127.0.0.1".to_string()
+    "0.0.0.0".to_string()
 }
 
 fn default_max_connections() -> usize {
@@ -217,7 +217,7 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.server.http_port, 8880);
         assert_eq!(config.server.websocket_port, 8889);
-        assert_eq!(config.server.bind_address, "127.0.0.1");
+        assert_eq!(config.server.bind_address, "0.0.0.0");
     }
 
     #[test]
