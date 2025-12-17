@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const SERVICE_NAME: &str = "androidoscopy";
-const BINARY_NAME: &str = "androidoscopy-server";
+const BINARY_NAME: &str = "androidoscopy";
 
 pub fn install() -> Result<(), Box<dyn std::error::Error>> {
     let bin_dir = get_bin_dir()?;
@@ -52,7 +52,7 @@ pub fn install() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nTo enable on login:");
     println!("  systemctl --user enable {}", SERVICE_NAME);
     println!("\nTo check status:");
-    println!("  androidoscopy-server status");
+    println!("  androidoscopy status");
 
     Ok(())
 }

@@ -1,7 +1,13 @@
 [package]
-name = "androidoscopy-server"
+name = "androidoscopy"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "Debug server for Android applications with real-time dashboard"
+repository = "https://github.com/lelloman/androidoscopy"
+keywords = ["android", "debugging", "developer-tools", "websocket"]
+categories = ["development-tools", "command-line-utilities"]
+readme = "../README.md"
 
 [dependencies]
 axum = { version = "0.7", features = ["ws"] }

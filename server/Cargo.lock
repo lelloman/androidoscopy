@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "androidoscopy-server"
+name = "androidoscopy"
 version = "0.1.0"
 dependencies = [
  "axum",

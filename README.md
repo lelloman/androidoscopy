@@ -32,7 +32,7 @@ To run the server automatically in the background:
 
 ```bash
 # Install as systemd user service
-androidoscopy-server install
+androidoscopy install
 
 # Start the service
 systemctl --user start androidoscopy
@@ -41,10 +41,10 @@ systemctl --user start androidoscopy
 systemctl --user enable androidoscopy
 
 # Check status
-androidoscopy-server status
+androidoscopy status
 
 # Uninstall
-androidoscopy-server uninstall
+androidoscopy uninstall
 ```
 
 ### 2. Add the SDK to Your Android App

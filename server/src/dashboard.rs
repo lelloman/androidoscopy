@@ -6,7 +6,7 @@ use axum::{
 use rust_embed::Embed;
 
 #[derive(Embed)]
-#[folder = "../dashboard/dist"]
+#[folder = "dashboard/dist"]
 struct DashboardAssets;
 
 pub async fn serve_embedded(req: Request<Body>) -> impl IntoResponse {

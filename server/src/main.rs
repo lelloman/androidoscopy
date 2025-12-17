@@ -20,7 +20,7 @@ use config::Config;
 use state::AppState;
 
 #[derive(Parser)]
-#[command(name = "androidoscopy-server")]
+#[command(name = "androidoscopy")]
 #[command(about = "Androidoscopy development server", long_about = None)]
 struct Cli {
     #[command(subcommand)]
