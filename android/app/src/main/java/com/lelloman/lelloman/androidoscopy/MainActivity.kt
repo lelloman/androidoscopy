@@ -41,6 +41,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.lelloman.androidoscopy.Androidoscopy
 import com.lelloman.androidoscopy.ConnectionState
+import com.lelloman.androidoscopy.ui.DashboardActivity
 import com.lelloman.lelloman.androidoscopy.ui.theme.AndroidoscopyTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -101,6 +102,14 @@ fun DemoScreen(
 
         // Connection Status Card
         ConnectionStatusCard(connectionState)
+
+        // Embedded Dashboard Button
+        Button(
+            onClick = { DashboardActivity.launch(app) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Open Embedded Dashboard")
+        }
 
         // OkHttp Demo
         SectionCard(title = "Network Requests (OkHttp)") {

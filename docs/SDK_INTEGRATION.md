@@ -15,13 +15,21 @@ Add the SDK to your app's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
+    // Core SDK (required)
     debugImplementation(project(":sdk"))
     // or when published to Maven:
     // debugImplementation("com.lelloman:androidoscopy-sdk:1.0.0")
+
+    // Embedded Dashboard UI (optional)
+    debugImplementation(project(":sdk-ui"))
+    // or when published to Maven:
+    // debugImplementation("com.lelloman:androidoscopy-sdk-ui:1.0.0")
 }
 ```
 
 Note: Using `debugImplementation` ensures the SDK is only included in debug builds.
+
+The `sdk-ui` module is optional and adds an embedded dashboard Activity that can be launched directly on the device.
 
 ## Step 2: Initialize the SDK
 
@@ -388,3 +396,86 @@ Data paths use JSONPath syntax to reference values:
 1. Ensure action IDs match between dashboard and handlers
 2. Check that handlers are registered before connecting
 3. Verify handler isn't throwing exceptions
+
+## Embedded Dashboard (sdk-ui)
+
+The `sdk-ui` module provides an embedded dashboard Activity that displays the same information as the web dashboard, but directly on the device. This is useful for debugging when you don't have access to a browser or want to quickly check metrics on the device itself.
+
+### Features
+
+- **Same dashboard layout** - Uses the exact same schema you defined in `Androidoscopy.init()`
+- **Real-time updates** - Data flows directly from the SDK, no server connection required
+- **Action support** - Button presses trigger your registered action handlers
+- **Launcher entry** - Appears as a separate app in the launcher for quick access
+- **Dark theme** - Matches the web dashboard aesthetic
+
+### Adding the Dependency
+
+```kotlin
+dependencies {
+    debugImplementation(project(":sdk-ui"))
+}
+```
+
+### Launcher Entry
+
+When you include `sdk-ui`, a new launcher entry called "📊 Dashboard" appears alongside your app. This allows you to open the dashboard without navigating through your app's UI.
+
+The dashboard icon defaults to your app's icon. To customize it, add this to your app's `AndroidManifest.xml`:
+
+```xml
+<activity
+    android:name="com.lelloman.androidoscopy.ui.DashboardActivity"
+    android:icon="@mipmap/ic_dashboard_custom"
+    android:label="My App Debug"
+    tools:replace="android:icon,android:label" />
+```
+
+### Launching Programmatically
+
+You can also launch the dashboard from your app's code:
+
+```kotlin
+import com.lelloman.androidoscopy.ui.DashboardActivity
+
+// Launch from any Context
+DashboardActivity.launch(context)
+
+// Or create an Intent for navigation components
+val intent = DashboardActivity.createIntent(context)
+startActivity(intent)
+
+// Or use the action
+startActivity(Intent("com.lelloman.androidoscopy.DASHBOARD"))
+```
+
+### Adding a Debug Menu Item
+
+A common pattern is to add a menu item or button in your app's debug builds:
+
+```kotlin
+// In your Activity or Fragment
+if (BuildConfig.DEBUG) {
+    debugButton.visibility = View.VISIBLE
+    debugButton.setOnClickListener {
+        DashboardActivity.launch(this)
+    }
+}
+```
+
+### Supported Widgets
+
+The embedded dashboard supports these widget types:
+
+| Widget | Description |
+|--------|-------------|
+| `number` | Numeric display with formatting (bytes, percent, etc.) |
+| `text` | Text display |
+| `badge` | Status badge with color variants |
+| `gauge` | Circular progress indicator |
+| `button` | Action buttons |
+| `chart` | Time-series line chart |
+| `log_viewer` | Filterable log viewer |
+| `table` | Data table with row actions |
+
+Note: Some specialized widgets (`network_request_viewer`, `shared_preferences_viewer`, `sqlite_viewer`, `permissions_viewer`) are not yet supported in the embedded view and will show a placeholder.

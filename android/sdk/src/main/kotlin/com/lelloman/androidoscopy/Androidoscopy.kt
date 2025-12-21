@@ -45,6 +45,38 @@ object Androidoscopy {
 
     val connectionState get() = androidoscopyImpl?.connectionState ?: notInitializedError()
 
+    /**
+     * Observable flow of current data collected from all data providers.
+     * Used by the SDK UI module to render the dashboard.
+     */
+    val dataFlow get() = androidoscopyImpl?.dataFlow ?: notInitializedError()
+
+    /**
+     * Observable flow of log entries.
+     * Used by the SDK UI module to render the log viewer.
+     */
+    val logFlow get() = androidoscopyImpl?.logFlow ?: notInitializedError()
+
+    /**
+     * The dashboard schema defined in the configuration.
+     * Used by the SDK UI module to render the dashboard layout.
+     */
+    val dashboardSchema get() = androidoscopyImpl?.dashboardSchema
+
+    /**
+     * The app name configured for this session.
+     */
+    val appName get() = androidoscopyImpl?.appName
+
+    /**
+     * Invokes a registered action handler.
+     * Used by the SDK UI module when action buttons are clicked.
+     */
+    suspend fun invokeAction(action: String, args: Map<String, Any> = emptyMap()): ActionResult {
+        return androidoscopyImpl?.invokeAction(action, args)
+            ?: ActionResult.failure("Androidoscopy not initialized")
+    }
+
     fun init(context: Application, config: AndroidoscopyConfig.() -> Unit) {
         val configBuilder = AndroidoscopyConfig()
         configBuilder.config()
@@ -98,9 +130,35 @@ object Androidoscopy {
         }
 
         private val currentData = mutableMapOf<String, Any>()
+
+        // Data flow for UI module - emits copies of currentData on each update
+        private val _dataFlow = MutableStateFlow<Map<String, Any>>(emptyMap())
+        val dataFlow: StateFlow<Map<String, Any>> = _dataFlow
+
+        // Log flow for UI module - emits log entries
+        private val _logFlow = MutableStateFlow<List<LogEntry>>(emptyList())
+        val logFlow: StateFlow<List<LogEntry>> = _logFlow
+        private val logBuffer = mutableListOf<LogEntry>()
+        private val maxLogBufferSize = 1000
+
+        // Expose dashboard schema and app name for UI module
+        val dashboardSchema: JsonElement? get() = config.dashboardSchema
+        val appName: String? get() = config.appName
+
         private val dataProviderManager = DataProviderManager(scope) { key, data ->
             currentData[key] = data
+            _dataFlow.value = currentData.toMap() // Emit copy for UI
             sendData()
+        }
+
+        suspend fun invokeAction(action: String, args: Map<String, Any>): ActionResult {
+            val handler = config.actionHandlers[action]
+                ?: return ActionResult.failure("Unknown action: $action")
+            return try {
+                handler(args)
+            } catch (e: Exception) {
+                ActionResult.failure(e.message ?: "Unknown error")
+            }
         }
 
         fun connect() {
@@ -148,16 +206,34 @@ object Androidoscopy {
         }
 
         fun log(level: LogLevel, tag: String?, message: String, throwable: Throwable? = null) {
-            val sid = sessionId ?: return
-            val cfg = config ?: return
-            if (!cfg.enableLogging) return
+            if (!config.enableLogging) return
 
+            val timestamp = currentTimestamp()
             val truncatedMessage = message.take(MessageLimits.MAX_LOG_MESSAGE_SIZE)
             val truncatedThrowable =
                 throwable?.stackTraceToString()?.take(MessageLimits.MAX_LOG_THROWABLE_SIZE)
 
+            // Emit to local log flow for UI module (even if not connected to server)
+            val logEntry = LogEntry(
+                timestamp = timestamp,
+                level = level,
+                tag = tag,
+                message = truncatedMessage,
+                throwable = truncatedThrowable
+            )
+            synchronized(logBuffer) {
+                logBuffer.add(logEntry)
+                if (logBuffer.size > maxLogBufferSize) {
+                    logBuffer.removeAt(0)
+                }
+                _logFlow.value = logBuffer.toList()
+            }
+
+            // Send to server if connected
+            val sid = sessionId ?: return
+
             val logMessage = LogMessage(
-                timestamp = currentTimestamp(),
+                timestamp = timestamp,
                 sessionId = sid,
                 payload = LogPayload(
                     level = level,
@@ -418,3 +494,14 @@ sealed class ConnectionState {
     data class Connected(val sessionId: String) : ConnectionState()
     data class Error(val message: String) : ConnectionState()
 }
+
+/**
+ * Represents a log entry for the SDK UI module.
+ */
+data class LogEntry(
+    val timestamp: String,
+    val level: LogLevel,
+    val tag: String?,
+    val message: String,
+    val throwable: String? = null
+)

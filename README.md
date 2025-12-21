@@ -112,7 +112,27 @@ Androidoscopy.log(LogLevel.INFO, "NetworkClient", "Request completed")
 
 ### 5. Open the Dashboard
 
-Open `http://localhost:8080` in your browser to see connected apps and their data in real-time.
+Open `http://localhost:8880` in your browser to see connected apps and their data in real-time.
+
+### 6. (Optional) Add the Embedded Dashboard
+
+If you want to view the dashboard directly on the device, add the optional UI module:
+
+```kotlin
+dependencies {
+    implementation(project(":sdk"))
+    implementation(project(":sdk-ui"))  // Adds embedded dashboard Activity
+}
+```
+
+This adds a separate launcher entry called "📊 Dashboard" that opens the dashboard directly on the device. You can also launch it programmatically:
+
+```kotlin
+import com.lelloman.androidoscopy.ui.DashboardActivity
+
+// Launch from anywhere
+DashboardActivity.launch(context)
+```
 
 ## Project Structure
 
@@ -121,7 +141,8 @@ androidoscopy/
 ├── server/           # Rust WebSocket/HTTP server
 ├── android/
 │   ├── app/          # Demo application
-│   └── sdk/          # Android SDK library
+│   ├── sdk/          # Android SDK library (core)
+│   └── sdk-ui/       # Embedded dashboard Activity (optional)
 ├── dashboard/        # Svelte web dashboard
 └── e2e/              # End-to-end tests
 ```
