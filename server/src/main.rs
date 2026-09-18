@@ -1,6 +1,6 @@
-use axum::{routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use clap::{Parser, Subcommand};
+use simple_server::axum::{routing::get, Router};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tracing::{info, warn};
@@ -105,7 +105,9 @@ async fn run_server() {
 
         let listener = TcpListener::bind(http_addr).await.unwrap();
         info!("Dashboard: http://{}", http_addr);
-        axum::serve(listener, http_app).await.unwrap();
+        simple_server::axum::serve(listener, http_app)
+            .await
+            .unwrap();
     });
 
     // Start WSS server for Android app connections (TLS, no cleartext needed)
@@ -151,5 +153,5 @@ async fn start_ws_server(addr: SocketAddr, state: AppState) {
 
     let listener = TcpListener::bind(addr).await.unwrap();
     info!("Android app: ws://{}/ws/app", addr);
-    axum::serve(listener, app).await.unwrap();
+    simple_server::axum::serve(listener, app).await.unwrap();
 }

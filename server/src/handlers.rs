@@ -21,15 +21,15 @@
 //! 3. Server forwards SESSION_DATA/SESSION_LOG from apps
 //! 4. Client can send ACTION messages to specific sessions
 
-use axum::{
+use chrono::Utc;
+use futures::{SinkExt, StreamExt};
+use simple_server::axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State,
     },
     response::IntoResponse,
 };
-use chrono::Utc;
-use futures::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -297,7 +297,11 @@ async fn handle_dashboard_connection(socket: WebSocket, state: AppState) {
         manager.add_dashboard_sender(tx.clone());
 
         // Send SYNC with all active sessions
-        let sessions: Vec<_> = manager.get_active_sessions().iter().map(|s| s.to_session_info()).collect();
+        let sessions: Vec<_> = manager
+            .get_active_sessions()
+            .iter()
+            .map(|s| s.to_session_info())
+            .collect();
         let sync_msg = ServiceToDashboardMessage::Sync {
             payload: SyncPayload { sessions },
         };
@@ -353,7 +357,10 @@ async fn handle_dashboard_connection(socket: WebSocket, state: AppState) {
                                 };
 
                                 if app_sender.send(action_msg).await.is_err() {
-                                    warn!("Failed to send ACTION to app for session {}", session_id);
+                                    warn!(
+                                        "Failed to send ACTION to app for session {}",
+                                        session_id
+                                    );
                                 }
                             } else {
                                 warn!("Session {} has no active app connection", session_id);

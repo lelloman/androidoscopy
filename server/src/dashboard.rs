@@ -1,9 +1,9 @@
-use axum::{
+use rust_embed::Embed;
+use simple_server::axum::{
     body::Body,
     http::{header, Request, Response, StatusCode},
     response::IntoResponse,
 };
-use rust_embed::Embed;
 
 #[derive(Embed)]
 #[folder = "dashboard/dist"]

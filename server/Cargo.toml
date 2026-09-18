@@ -10,7 +10,7 @@ categories = ["development-tools", "command-line-utilities"]
 readme = "../README.md"
 
 [dependencies]
-axum = { version = "0.7", features = ["ws"] }
+simple-server = { git = "https://github.com/lelloman/simple-server", rev = "46a36391ccca522f3ec9aa24206f2b231162dd96", features = ["ws"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
@@ -31,3 +31,4 @@ mime_guess = "2"
 
 [dev-dependencies]
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-native-roots"] }
+rustls = "0.23"

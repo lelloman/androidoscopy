@@ -4,7 +4,7 @@ use serde::Deserialize;
 use tokio::net::UdpSocket;
 use tokio::time::timeout;
 
-use androidoscopy_server::discovery::broadcast_presence;
+use androidoscopy::discovery::broadcast_presence;
 
 #[derive(Debug, Deserialize)]
 struct DiscoveryMessage {

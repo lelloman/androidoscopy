@@ -1,17 +1,17 @@
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use androidoscopy_server::config::Config;
-use androidoscopy_server::handlers;
-use androidoscopy_server::protocol::{
+use androidoscopy::config::Config;
+use androidoscopy::handlers;
+use androidoscopy::protocol::{
     ActionResultPayload, AppMessage, DashboardActionPayload, DashboardToServiceMessage, DeviceInfo,
     LogLevel, LogPayload, RegisterPayload, ServiceToAppMessage, ServiceToDashboardMessage,
 };
-use androidoscopy_server::state::AppState;
+use androidoscopy::state::AppState;
 
-use axum::{routing::get, Router};
 use futures::{SinkExt, StreamExt};
 use serde_json::json;
+use simple_server::axum::{routing::get, Router};
 use tokio::net::TcpListener;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
@@ -30,7 +30,7 @@ async fn spawn_test_server() -> SocketAddr {
     let addr = listener.local_addr().unwrap();
 
     tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
+        simple_server::axum::serve(listener, app).await.unwrap();
     });
 
     // Give the server a moment to start
@@ -219,7 +219,9 @@ async fn test_data_message_routing_to_dashboard() {
         payload: create_register_payload(),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&register_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&register_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -250,7 +252,9 @@ async fn test_data_message_routing_to_dashboard() {
         }),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&data_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&data_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -264,10 +268,7 @@ async fn test_data_message_routing_to_dashboard() {
     if let Message::Text(text) = response {
         let msg: ServiceToDashboardMessage = serde_json::from_str(&text).unwrap();
         match msg {
-            ServiceToDashboardMessage::SessionData {
-                payload,
-                ..
-            } => {
+            ServiceToDashboardMessage::SessionData { payload, .. } => {
                 assert_eq!(payload.session_id, session_id);
                 assert_eq!(payload.data["memory"]["heap_used_bytes"], 1000000);
             }
@@ -305,7 +306,9 @@ async fn test_log_message_routing_to_dashboard() {
         payload: create_register_payload(),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&register_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&register_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -336,7 +339,9 @@ async fn test_log_message_routing_to_dashboard() {
         },
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&log_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&log_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -350,10 +355,7 @@ async fn test_log_message_routing_to_dashboard() {
     if let Message::Text(text) = response {
         let msg: ServiceToDashboardMessage = serde_json::from_str(&text).unwrap();
         match msg {
-            ServiceToDashboardMessage::SessionLog {
-                payload,
-                ..
-            } => {
+            ServiceToDashboardMessage::SessionLog { payload, .. } => {
                 assert_eq!(payload.session_id, session_id);
                 assert_eq!(payload.log.level, LogLevel::Error);
                 assert_eq!(payload.log.tag, Some("NetworkClient".to_string()));
@@ -393,7 +395,9 @@ async fn test_action_routing_from_dashboard_to_app() {
         payload: create_register_payload(),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&register_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&register_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -422,7 +426,9 @@ async fn test_action_routing_from_dashboard_to_app() {
         },
     };
     dashboard_ws
-        .send(Message::Text(serde_json::to_string(&action_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&action_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -479,7 +485,9 @@ async fn test_action_result_routing_to_dashboard() {
         payload: create_register_payload(),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&register_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&register_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -510,7 +518,9 @@ async fn test_action_result_routing_to_dashboard() {
         },
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&result_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&result_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -524,14 +534,14 @@ async fn test_action_result_routing_to_dashboard() {
     if let Message::Text(text) = response {
         let msg: ServiceToDashboardMessage = serde_json::from_str(&text).unwrap();
         match msg {
-            ServiceToDashboardMessage::ActionResult {
-                payload,
-                ..
-            } => {
+            ServiceToDashboardMessage::ActionResult { payload, .. } => {
                 assert_eq!(payload.session_id, session_id);
                 assert!(payload.success);
                 assert_eq!(payload.action_id, "action-123");
-                assert_eq!(payload.message, Some("Cache cleared successfully".to_string()));
+                assert_eq!(
+                    payload.message,
+                    Some("Cache cleared successfully".to_string())
+                );
             }
             _ => panic!("Expected ACTION_RESULT message, got {:?}", msg),
         }
@@ -567,7 +577,9 @@ async fn test_app_disconnection_sends_session_ended() {
         payload: create_register_payload(),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&register_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&register_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -599,9 +611,7 @@ async fn test_app_disconnection_sends_session_ended() {
     if let Message::Text(text) = response {
         let msg: ServiceToDashboardMessage = serde_json::from_str(&text).unwrap();
         match msg {
-            ServiceToDashboardMessage::SessionEnded {
-                payload, ..
-            } => {
+            ServiceToDashboardMessage::SessionEnded { payload, .. } => {
                 assert_eq!(payload.session_id, session_id);
             }
             _ => panic!("Expected SESSION_ENDED message, got {:?}", msg),
@@ -629,7 +639,9 @@ async fn test_late_dashboard_receives_existing_sessions_in_sync() {
         payload: create_register_payload(),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&register_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&register_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -703,7 +715,9 @@ async fn test_multiple_dashboards_receive_updates() {
         payload: create_register_payload(),
     };
     app_ws
-        .send(Message::Text(serde_json::to_string(&register_msg).unwrap().into()))
+        .send(Message::Text(
+            serde_json::to_string(&register_msg).unwrap().into(),
+        ))
         .await
         .unwrap();
 
@@ -729,7 +743,11 @@ async fn test_multiple_dashboards_receive_updates() {
             let msg: ServiceToDashboardMessage = serde_json::from_str(&text).unwrap();
             match msg {
                 ServiceToDashboardMessage::SessionStarted { payload } => {
-                    assert_eq!(payload.session.app_name, "TestApp", "Dashboard {} mismatch", i);
+                    assert_eq!(
+                        payload.session.app_name, "TestApp",
+                        "Dashboard {} mismatch",
+                        i
+                    );
                 }
                 _ => panic!("Expected SESSION_STARTED on dashboard {}, got {:?}", i, msg),
             }
