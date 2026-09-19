@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,13 +25,16 @@ class SessionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        val palette = SessionPalette.fromArgbArray(intent.getIntArrayExtra(EXTRA_PALETTE))
         setContent {
-            MaterialTheme {
+            val colors = palette?.toColorScheme()
+                ?: if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
+            MaterialTheme(colorScheme = colors) {
                 val state by Androidoscopy.sessionState.collectAsState()
                 var error by remember { mutableStateOf<String?>(null) }
                 var peers by remember { mutableStateOf(Androidoscopy.rememberedPeers()) }
                 Surface(Modifier.fillMaxSize()) {
-                    Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(Modifier.safeDrawingPadding().padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text("Diagnostic session", style = MaterialTheme.typography.headlineMedium)
                         Text("An authorized PC can use all diagnostic tools enabled by this app, including tools that change app data.")
                         if (state.active) {
@@ -69,6 +73,17 @@ class SessionActivity : ComponentActivity() {
         }
     }
     companion object {
-        fun launch(context: Context) = context.startActivity(Intent(context, SessionActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        private const val EXTRA_PALETTE = "com.lelloman.androidoscopy.ui.SESSION_PALETTE_V1"
+
+        @JvmOverloads
+        fun launch(context: Context, palette: SessionPalette? = null) =
+            context.startActivity(createIntent(context, palette).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+
+        /** The optional palette is a snapshot; relaunch to apply a changed host theme. */
+        @JvmOverloads
+        fun createIntent(context: Context, palette: SessionPalette? = null): Intent =
+            Intent(context, SessionActivity::class.java).apply {
+                palette?.let { putExtra(EXTRA_PALETTE, it.toArgbArray()) }
+            }
     }
 }

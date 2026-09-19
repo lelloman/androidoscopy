@@ -140,6 +140,26 @@ import com.lelloman.androidoscopy.ui.DashboardActivity
 DashboardActivity.launch(context)
 ```
 
+### Host colors for the session screen
+
+SDK/UI 2.0.1 supports an optional `SessionPalette`. From a Compose host, pass the
+current Material color scheme when opening the session controls:
+
+```kotlin
+val palette = SessionPalette.fromColorScheme(MaterialTheme.colorScheme)
+Button(onClick = { SessionActivity.launch(context, palette) }) {
+    Text("Open diagnostics")
+}
+```
+
+Import `SessionPalette` and `SessionActivity` from `com.lelloman.androidoscopy.ui`.
+Non-Compose callers can construct `SessionPalette` with ARGB colors and use
+`SessionActivity.createIntent(context, palette)`. The palette covers session
+controls and pairing dialogs, not the legacy dashboard. It travels in the Intent
+and survives activity/process recreation; it is a snapshot, so relaunch to pick up
+changes to the host theme. No palette means a system light/dark Material theme.
+Opening the screen still never starts a release session automatically.
+
 ## Project Structure
 
 ```
