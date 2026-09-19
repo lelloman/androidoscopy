@@ -18,6 +18,8 @@ object Androidoscopy {
     fun sessionActivity() { androidoscopyImpl?.activity() }
     fun approvePairing(id: String) { androidoscopyImpl?.answerPairing(id, true) }
     fun rejectPairing(id: String) { androidoscopyImpl?.answerPairing(id, false) }
+    /** Local, session-only opt-in. Automatically grants new PCs access to all app tools. */
+    fun setAcceptAllConnections(enabled: Boolean) = requireNotNull(androidoscopyImpl).setAcceptAll(enabled)
     fun rememberedPeers(): List<String> = androidoscopyImpl?.rememberedPeers() ?: emptyList()
     fun forgetPeer(id: String) { androidoscopyImpl?.forgetPeer(id) }
     fun registerTool(tool: com.lelloman.androidoscopy.tools.Tool) = requireNotNull(androidoscopyImpl).registerTool(tool)

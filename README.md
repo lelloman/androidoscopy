@@ -142,6 +142,17 @@ DashboardActivity.launch(context)
 
 ### Host colors for the session screen
 
+SDK/UI 2.0.2 also adds a session-only **Accept all** switch. It defaults off and
+requires a local foreground confirmation to enable. Any PC able to reach the
+session can then pair without comparing a code and access every enabled tool,
+including mutating tools and unredacted data. TLS and protocol validation remain
+enabled; only one PC may be connected at a time. Stop, expiry, or process death
+resets the switch. Turning it off does not revoke an existing connection (use
+Stop for that). Automatically approved PCs are never saved as trusted peers.
+Hosts can observe `SessionState.acceptAll` and call
+`Androidoscopy.setAcceptAllConnections(enabled)` from their foreground UI.
+The setting is not exposed as a remote tool.
+
 SDK/UI 2.0.1 supports an optional `SessionPalette`. From a Compose host, pass the
 current Material color scheme when opening the session controls:
 

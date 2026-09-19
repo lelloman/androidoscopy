@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.lelloman.androidoscopy.Androidoscopy
 
@@ -31,7 +32,8 @@ class SessionActivity : ComponentActivity() {
                 ?: if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
             MaterialTheme(colorScheme = colors) {
                 val state by Androidoscopy.sessionState.collectAsState()
-                var error by remember { mutableStateOf<String?>(null) }
+                var error by remember(state.sessionId, state.peer) { mutableStateOf<String?>(null) }
+                var confirmAcceptAll by remember(state.sessionId) { mutableStateOf(false) }
                 var peers by remember { mutableStateOf(Androidoscopy.rememberedPeers()) }
                 Surface(Modifier.fillMaxSize()) {
                     Column(Modifier.safeDrawingPadding().padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -41,6 +43,20 @@ class SessionActivity : ComponentActivity() {
                             Text(state.address ?: "Waiting for a local network…")
                             Text(state.peer?.let { "Connected PC: $it" } ?: "Waiting for a PC")
                             state.remainingMs?.let { Text("Expires after inactivity: ${(it + 59_999) / 60_000} min remaining") }
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Accept all", style = MaterialTheme.typography.titleMedium)
+                                    Text("Automatically approve new PCs for this session only. One PC can connect at a time.",
+                                        style = MaterialTheme.typography.bodySmall)
+                                }
+                                Switch(checked = state.acceptAll, onCheckedChange = { enabled ->
+                                    if (enabled) confirmAcceptAll = true
+                                    else error = runCatching { Androidoscopy.setAcceptAllConnections(false) }.exceptionOrNull()?.message
+                                })
+                            }
+                            if (state.acceptAll) Text("Automatic approval is on. Any PC that can reach this session can read data and run all enabled tools.",
+                                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                             Button(onClick = { Androidoscopy.stopSession() }) { Text("Stop session") }
                             OutlinedButton(onClick = { Androidoscopy.sessionActivity() }) { Text("Keep session active") }
                             OutlinedButton(onClick = { DashboardActivity.launch(this@SessionActivity) }) { Text("Open dashboard") }
@@ -60,7 +76,17 @@ class SessionActivity : ComponentActivity() {
                         }
                     }
                 }
-                state.pairing?.let { request ->
+                if (confirmAcceptAll && state.active) AlertDialog(
+                    onDismissRequest = { confirmAcceptAll = false },
+                    title = { Text("Accept all connection requests?") },
+                    text = { Text("Any PC that can reach this session will be approved without comparing a code. It can read unredacted logs and use tools that change app data. This resets when the session ends. Turning it off does not disconnect an already approved PC.") },
+                    confirmButton = { TextButton(onClick = {
+                        error = runCatching { Androidoscopy.setAcceptAllConnections(true) }.exceptionOrNull()?.message
+                        confirmAcceptAll = false
+                    }) { Text("Enable for this session") } },
+                    dismissButton = { TextButton(onClick = { confirmAcceptAll = false }) { Text("Cancel") } },
+                )
+                state.pairing?.takeUnless { state.acceptAll }?.let { request ->
                     AlertDialog(
                         onDismissRequest = { Androidoscopy.rejectPairing(request.id) },
                         title = { Text("Allow this PC?") },

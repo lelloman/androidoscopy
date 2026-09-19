@@ -40,7 +40,7 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
     @Volatile private var transport: LanSocket? = null
     @Volatile private var pendingSocket: SSLSocket? = null
     @Volatile private var connection: FramedSocket? = null
-    @Volatile private var answer: CompletableDeferred<Boolean>? = null
+    @Volatile private var answer: CompletableDeferred<PairingDecision>? = null
     @Volatile private var credential: ByteArray? = null
     @Volatile private var peer: String? = null
     @Volatile private var foreground = false
@@ -145,7 +145,13 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
         if (peer == id) { credential?.fill(0); credential = null; peer = null; connection?.socket?.close() }
     }
     fun answerPairing(id: String, approved: Boolean) = synchronized(lock) {
-        if (isActive && state.value.pairing?.id == id) answer?.complete(approved)
+        if (isActive && state.value.pairing?.id == id) answer?.complete(if (approved) PairingDecision.MANUAL else PairingDecision.REJECTED)
+    }
+    fun setAcceptAll(enabled: Boolean) = synchronized(lock) {
+        check(isActive) { "Start a diagnostic session first" }
+        state.value = state.value.withAcceptAll(enabled, foreground)
+        clock.activity()
+        if (enabled) answer?.complete(PairingDecision.AUTOMATIC)
     }
     fun registerTool(tool: Tool) { tools[tool.name] = tool; synchronized(lock) { revision++ }; scope?.launch { publishManifest() } }
     fun unregisterTool(name: String) { tools.remove(name); synchronized(lock) { revision++ }; scope?.launch { publishManifest() } }
@@ -212,11 +218,13 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
             val remote = hello.getValue("peer").jsonPrimitive.content
             require(remote.matches(Regex("[a-zA-Z0-9-]{1,64}")))
             var secret = if (remote == peer) credential else if (debug) peers.get(remote) else null
+            var remember = false
             if (hello["type"]?.jsonPrimitive?.content == "RESUME") {
                 require(secret != null && PairingCrypto.equal(PairingCrypto.proof(secret, exporter, id),
                     PairingCrypto.unhex(hello.getValue("proof").jsonPrimitive.content))) { "INVALID_CREDENTIAL" }
+                remember = debug && peers.get(remote)?.let { PairingCrypto.equal(it, requireNotNull(secret)) } == true
             } else {
-                require(hello["type"]?.jsonPrimitive?.content == "PAIR" && peer == null)
+                require(hello["type"]?.jsonPrimitive?.content == "PAIR")
                 val now = SystemClock.elapsedRealtime()
                 require(now - lastPairAttempt >= 5_000) { "PAIRING_RATE_LIMITED" }; lastPairAttempt = now
                 val commitment = PairingCrypto.unhex(hello.getValue("commitment").jsonPrimitive.content)
@@ -225,24 +233,35 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
                 val clientNonce = PairingCrypto.unhex(wire.read().getValue("nonce").jsonPrimitive.content)
                 require(PairingCrypto.equal(commitment, PairingCrypto.commitment(exporter, clientNonce)))
                 val request = PairingRequest(UUID.randomUUID().toString(), PairingCrypto.code(exporter, clientNonce, nonce), socket.inetAddress.hostAddress ?: "PC")
-                val decision = CompletableDeferred<Boolean>()
-                synchronized(lock) { check(generation == id && isActive); answer = decision; state.value = state.value.copy(pairing = request) }
-                DiagnosticService.showPairing(app)
-                require(withTimeout(60_000) { decision.await() }) { "PAIRING_REJECTED" }
+                val decision = CompletableDeferred<PairingDecision>()
+                val automatic = synchronized(lock) {
+                    check(generation == id && isActive)
+                    answer = decision
+                    val automatic = state.value.acceptAll
+                    state.value = state.value.copy(pairing = if (automatic) null else request, reason = null)
+                    if (automatic) decision.complete(PairingDecision.AUTOMATIC)
+                    automatic
+                }
+                if (!automatic) DiagnosticService.showPairing(app)
+                val approval = withTimeout(60_000) { decision.await() }
+                require(approval != PairingDecision.REJECTED) { "PAIRING_REJECTED" }
                 synchronized(lock) { check(generation == id && clock.activity()); state.value = state.value.copy(pairing = null) }
                 secret = PairingCrypto.random()
-                if (debug) peers.remember(remote, secret)
+                // Automatically accepted PCs must never become permanently trusted.
+                remember = shouldRememberPeer(debug, approval)
+                if (remember) peers.remember(remote, secret) else if (debug) peers.forget(remote)
             }
             synchronized(lock) {
                 check(generation == id && isActive)
+                if (credential !== secret) credential?.fill(0)
                 peer = remote; credential = secret; connection = wire; pendingSocket = null
-                state.value = state.value.copy(peer = remote, pairing = null)
+                state.value = state.value.withConnectedPeer(remote)
                 connectionState.value = ConnectionState.Connected(id)
             }
             socket.soTimeout = 0
             wire.write(buildJsonObject {
                 put("type", "AUTHORIZED"); put("session", id); put("credential", PairingCrypto.hex(requireNotNull(secret)))
-                put("remember", debug); put("app_name", config.appName); put("package_name", app.packageName)
+                put("remember", remember); put("app_name", config.appName); put("package_name", app.packageName)
                 put("remainingMs", clock.remainingMs())
                 put("dashboard", config.dashboardSchema ?: JsonObject(emptyMap()))
             })
@@ -258,9 +277,11 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
                     "ACTIVITY" -> activity()
                 }
             }
+        } catch (e: TimeoutCancellationException) {
+            synchronized(lock) { if (generation == id && isActive) state.value = state.value.copy(reason = connectionEndedReason(e)) }
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) {
-            synchronized(lock) { if (generation == id && isActive) state.value = state.value.copy(reason = "Connection ended: ${e.javaClass.simpleName}") }
+            synchronized(lock) { if (generation == id && isActive) state.value = state.value.copy(reason = connectionEndedReason(e)) }
         }
         finally {
             runCatching { socket.close() }
