@@ -40,13 +40,20 @@ const pendingActions = new Map<string, {
     reject: (error: Error) => void;
 }>();
 
-export function connect(url?: string) {
+export async function connect(url?: string) {
     if (get(connected) || get(connecting)) return;
 
     connecting.set(true);
     error.set(null);
 
-    const wsUrl = url || `ws://${location.host}/ws/dashboard`;
+    const token = new URLSearchParams(location.hash.slice(1)).get('token');
+    if (token) {
+        const response = await fetch('/api/v2/auth', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        if (!response.ok) { error.set('Desktop authorization failed'); connecting.set(false); return; }
+        history.replaceState(null, '', location.pathname);
+    }
+    const legacy = new URLSearchParams(location.search).get('legacy') === '1';
+    const wsUrl = url || `ws://${location.host}/${legacy ? 'ws/dashboard' : 'api/v2/events'}`;
 
     try {
         ws = new WebSocket(wsUrl);

@@ -1,5 +1,11 @@
 # Androidoscopy
 
+**Protocol v2:** app-defined diagnostic tools are now available over paired LAN
+sessions and desktop MCP. Debug apps start automatically; release apps require
+explicit activation and expire after inactivity. See [Sessions v2](docs/SESSIONS_V2.md)
+for setup, security, migration, and testing. The original v1 guide below applies
+only to the explicit `androidoscopy legacy` server.
+
 A developer tool that eliminates the friction of debugging Android applications by providing a persistent, always-on debug service that apps can connect to automatically.
 
 No more `adb forward` commands, no more port juggling - just start your app and see debug data in your browser.

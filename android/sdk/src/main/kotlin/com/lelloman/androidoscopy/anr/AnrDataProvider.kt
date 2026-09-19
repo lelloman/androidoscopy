@@ -43,6 +43,11 @@ class AnrDataProvider(
         isStarted = false
     }
 
+    override fun close() {
+        stop()
+        anrHistory.clear()
+    }
+
     override suspend fun collect(): Map<String, Any> {
         // Ensure watchdog is running when data is being collected
         if (!isStarted) {

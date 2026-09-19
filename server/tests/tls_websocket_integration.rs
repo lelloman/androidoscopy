@@ -7,6 +7,7 @@ use tokio_tungstenite::{connect_async_tls_with_config, tungstenite::Message, Con
 
 #[tokio::test]
 async fn app_can_register_over_tls() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
     // Trust only this test's certificate: exercise TLS verification and the
     // Axum upgrade through the same axum-server adapter used in production.
     let certificate = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();

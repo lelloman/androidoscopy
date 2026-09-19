@@ -28,7 +28,11 @@ import java.util.concurrent.CopyOnWriteArrayList
  * ```
  */
 class AndroidoscopyInterceptor(
-    private val maxHistory: Int = DEFAULT_MAX_HISTORY
+    private val maxHistory: Int = DEFAULT_MAX_HISTORY,
+    internal val captureSession: () -> String? = {
+        if (com.lelloman.androidoscopy.Androidoscopy.isSessionActive)
+            com.lelloman.androidoscopy.Androidoscopy.sessionState.value.sessionId else null
+    },
 ) : Interceptor {
 
     private val requestHistory = CopyOnWriteArrayList<HttpRequestInfo>()
@@ -42,13 +46,14 @@ class AndroidoscopyInterceptor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
+        val session = captureSession() ?: return chain.proceed(request)
         val requestId = UUID.randomUUID().toString()
         val startTime = System.currentTimeMillis()
 
         val url = request.url
         val requestHeaders = mutableMapOf<String, String>()
         request.headers.forEach { (name, value) ->
-            requestHeaders[name] = value
+            requestHeaders[name] = redactHeader(name, value)
         }
 
         val requestBodySize = try {
@@ -63,7 +68,7 @@ class AndroidoscopyInterceptor(
 
             val responseHeaders = mutableMapOf<String, String>()
             response.headers.forEach { (name, value) ->
-                responseHeaders[name] = value
+                responseHeaders[name] = redactHeader(name, value)
             }
 
             val responseBodySize = response.body?.contentLength() ?: -1L
@@ -72,7 +77,7 @@ class AndroidoscopyInterceptor(
                 id = requestId,
                 timestamp = startTime,
                 method = request.method,
-                url = url.toString(),
+                url = url.newBuilder().username("").password("").query(null).fragment(null).build().toString(),
                 host = url.host,
                 path = url.encodedPath,
                 requestHeaders = requestHeaders,
@@ -85,7 +90,7 @@ class AndroidoscopyInterceptor(
                 error = null
             )
 
-            addToHistory(requestInfo)
+            addToHistory(requestInfo, session)
             response
         } catch (e: Exception) {
             val endTime = System.currentTimeMillis()
@@ -94,7 +99,7 @@ class AndroidoscopyInterceptor(
                 id = requestId,
                 timestamp = startTime,
                 method = request.method,
-                url = url.toString(),
+                url = url.newBuilder().username("").password("").query(null).fragment(null).build().toString(),
                 host = url.host,
                 path = url.encodedPath,
                 requestHeaders = requestHeaders,
@@ -104,15 +109,16 @@ class AndroidoscopyInterceptor(
                 responseHeaders = emptyMap(),
                 responseBodySize = 0L,
                 durationMs = endTime - startTime,
-                error = e.message ?: e.javaClass.simpleName
+                error = e.javaClass.simpleName
             )
 
-            addToHistory(requestInfo)
+            addToHistory(requestInfo, session)
             throw e
         }
     }
 
-    private fun addToHistory(info: HttpRequestInfo) {
+    @Synchronized private fun addToHistory(info: HttpRequestInfo, session: String) {
+        if (captureSession() != session) return
         requestHistory.add(0, info)
         while (requestHistory.size > maxHistory) {
             requestHistory.removeAt(requestHistory.size - 1)
@@ -145,11 +151,13 @@ class AndroidoscopyInterceptor(
     /**
      * Clear all captured requests.
      */
-    fun clear() {
+    @Synchronized fun clear() {
         requestHistory.clear()
     }
 
     companion object {
+        private fun redactHeader(name: String, value: String): String =
+            if (Regex("(?i)authorization|cookie|token|secret|key").containsMatchIn(name)) "[REDACTED]" else value
         const val DEFAULT_MAX_HISTORY = 100
 
         /**

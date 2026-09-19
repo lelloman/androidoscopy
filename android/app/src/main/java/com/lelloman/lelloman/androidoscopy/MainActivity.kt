@@ -88,6 +88,9 @@ fun DemoScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
+        Button(onClick = { com.lelloman.androidoscopy.ui.SessionActivity.launch(app) }) {
+            Text("Diagnostic session")
+        }
         Text(
             text = "Androidoscopy Demo",
             style = MaterialTheme.typography.headlineMedium,

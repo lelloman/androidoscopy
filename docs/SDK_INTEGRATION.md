@@ -1,5 +1,8 @@
 # Androidoscopy SDK Integration Guide
 
+For protocol v2, release sessions and MCP tools, start with [Sessions v2](SESSIONS_V2.md).
+The guide below describes the original protocol v1 integration.
+
 This guide walks you through integrating the Androidoscopy SDK into your Android application.
 
 ## Prerequisites

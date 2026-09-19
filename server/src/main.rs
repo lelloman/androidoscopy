@@ -31,6 +31,21 @@ struct Cli {
 enum Commands {
     /// Run the server (default)
     Run,
+    /// Run the isolated legacy v1 WebSocket server (no v2 sessions)
+    Legacy,
+    /// List discovered devices and pairing codes
+    Devices,
+    /// Connect to a device's LAN IP:port
+    Connect { address: String },
+    /// Disconnect an app instance
+    Disconnect { device: String },
+    /// Forget a paired device (also forget this PC on the phone before pairing again)
+    Forget { device: String },
+    /// Expose one app's tools through MCP stdio
+    Mcp {
+        #[arg(long)]
+        device: String,
+    },
     /// Install as a systemd user service
     Install,
     /// Uninstall the systemd user service
@@ -44,7 +59,46 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command.unwrap_or(Commands::Run) {
-        Commands::Run => run_server().await,
+        Commands::Run => {
+            if let Err(e) =
+                androidoscopy::control::run(androidoscopy::Config::load().unwrap_or_default()).await
+            {
+                eprintln!("{e:#}");
+                std::process::exit(1);
+            }
+        }
+        Commands::Legacy => run_server().await,
+        Commands::Mcp { device } => {
+            if let Err(e) = androidoscopy::mcp::run(device).await {
+                eprintln!("{e:#}");
+                std::process::exit(1);
+            }
+        }
+        Commands::Devices => control_request(reqwest::Method::GET, "devices", None).await,
+        Commands::Connect { address } => {
+            control_request(
+                reqwest::Method::POST,
+                "connect",
+                Some(serde_json::json!({"address":address})),
+            )
+            .await
+        }
+        Commands::Disconnect { device } => {
+            control_request(
+                reqwest::Method::POST,
+                "disconnect",
+                Some(serde_json::json!({"device":device})),
+            )
+            .await
+        }
+        Commands::Forget { device } => {
+            control_request(
+                reqwest::Method::POST,
+                "forget",
+                Some(serde_json::json!({"device":device})),
+            )
+            .await
+        }
         Commands::Install => {
             if let Err(e) = service::install() {
                 eprintln!("Installation failed: {}", e);
@@ -66,7 +120,18 @@ async fn main() {
     }
 }
 
+async fn control_request(method: reqwest::Method, path: &str, body: Option<serde_json::Value>) {
+    match androidoscopy::control::request(method, path, body).await {
+        Ok(value) => println!("{}", serde_json::to_string_pretty(&value).unwrap()),
+        Err(error) => {
+            eprintln!("{error:#}");
+            std::process::exit(1);
+        }
+    }
+}
+
 async fn run_server() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()

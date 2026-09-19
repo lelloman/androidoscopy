@@ -9,6 +9,7 @@
         activeSessionCount
     } from './lib/stores/connection';
     import SessionCard from './lib/SessionCard.svelte';
+    import Devices from './lib/Devices.svelte';
     import ToastContainer from './lib/ToastContainer.svelte';
     import ErrorBoundary from './lib/ErrorBoundary.svelte';
     import FullscreenModal from './lib/FullscreenModal.svelte';
@@ -45,6 +46,7 @@
         </div>
     {/if}
 
+    {#if new URLSearchParams(location.search).get('legacy') !== '1'}<Devices />{/if}
     <div class="sessions">
         {#if $sessionList.length === 0}
             <div class="empty-state">

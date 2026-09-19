@@ -23,7 +23,7 @@ class AndroidoscopyInterceptorTest {
         mockWebServer = MockWebServer()
         mockWebServer.start()
 
-        interceptor = AndroidoscopyInterceptor(maxHistory = 10)
+        interceptor = AndroidoscopyInterceptor(maxHistory = 10, captureSession = { "test" })
         client = OkHttpClient.Builder()
             .addInterceptor(interceptor)
             .build()
@@ -55,6 +55,24 @@ class AndroidoscopyInterceptorTest {
         assertNull(captured.error)
         assertTrue(captured.isSuccess)
         assertTrue(captured.durationMs >= 0)
+    }
+
+    @Test fun `inactive session does not capture traffic`() {
+        val inactive = AndroidoscopyInterceptor(captureSession = { null })
+        val inactiveClient = OkHttpClient.Builder().addInterceptor(inactive).build()
+        mockWebServer.enqueue(MockResponse().setBody("OK"))
+        inactiveClient.newCall(Request.Builder().url(mockWebServer.url("/secret")).build()).execute().close()
+        assertTrue(inactive.getRequests().isEmpty())
+    }
+
+    @Test fun `sensitive headers and query values are redacted`() {
+        mockWebServer.enqueue(MockResponse().setBody("OK").addHeader("Set-Cookie", "private"))
+        client.newCall(Request.Builder().url(mockWebServer.url("/test?token=secret"))
+            .header("Authorization", "Bearer secret").build()).execute().close()
+        val request = interceptor.getRequests().single()
+        assertEquals("[REDACTED]", request.requestHeaders["Authorization"])
+        assertEquals("[REDACTED]", request.responseHeaders["Set-Cookie"])
+        assertTrue(!request.url.contains("token"))
     }
 
     @Test

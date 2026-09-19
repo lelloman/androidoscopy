@@ -25,7 +25,6 @@ import com.lelloman.androidoscopy.data.MemoryDataProvider
 import com.lelloman.androidoscopy.data.NetworkDataProvider
 import com.lelloman.androidoscopy.data.StorageDataProvider
 import com.lelloman.androidoscopy.data.ThreadDataProvider
-import com.lelloman.androidoscopy.leakcanary.LeakDataProvider
 import com.lelloman.androidoscopy.okhttp.AndroidoscopyInterceptor
 import com.lelloman.androidoscopy.permissions.PermissionsDataProvider
 import com.lelloman.androidoscopy.prefs.SharedPreferencesDataProvider
@@ -35,7 +34,6 @@ import com.lelloman.androidoscopy.workmanager.WorkManagerDataProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import leakcanary.LeakCanary
 import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
@@ -60,7 +58,6 @@ class SampleApplication : Application() {
     private lateinit var sqliteDataProvider: SqliteDataProvider
     private lateinit var workManagerDataProvider: WorkManagerDataProvider
     private lateinit var coilDataProvider: CoilDataProvider
-    private lateinit var leakDataProvider: LeakDataProvider
 
     override fun onCreate() {
         super.onCreate()
@@ -75,10 +72,6 @@ class SampleApplication : Application() {
 
         // Setup Coil ImageLoader
         setupCoil()
-
-        // Setup LeakCanary with Androidoscopy
-        leakDataProvider = LeakDataProvider()
-        setupLeakCanary()
 
         // Initialize SharedPreferences with demo data
         setupDemoPreferences()
@@ -98,6 +91,11 @@ class SampleApplication : Application() {
         // Initialize Androidoscopy
         Androidoscopy.init(this) {
             appName = "Androidoscopy Demo"
+            tool(com.lelloman.androidoscopy.tools.BuiltInTools.snapshot())
+            tool(com.lelloman.androidoscopy.tools.BuiltInTools.logs())
+            tool(com.lelloman.androidoscopy.tools.Tool("demo.click_count", "Read the demo click counter", readOnly = true) {
+                com.lelloman.androidoscopy.tools.ToolResult.text(_clickCount.value.toString())
+            })
 
             dashboard {
                 // System metrics
@@ -214,7 +212,7 @@ class SampleApplication : Application() {
             buildType = "debug",
             flavor = "demo"
         ))
-        Androidoscopy.registerDataProvider(leakDataProvider)
+        DemoLeaks.install()
         Androidoscopy.registerDataProvider(workManagerDataProvider)
         Androidoscopy.registerDataProvider(coilDataProvider)
 
@@ -252,15 +250,6 @@ class SampleApplication : Application() {
             .build()
 
         Timber.d("Coil ImageLoader configured")
-    }
-
-    private fun setupLeakCanary() {
-        // Configure LeakCanary to use our listener
-        LeakCanary.config = LeakCanary.config.copy(
-            eventListeners = LeakCanary.config.eventListeners + leakDataProvider.eventListener
-        )
-
-        Timber.d("LeakCanary configured with Androidoscopy listener")
     }
 
     private fun setupDemoPreferences() {

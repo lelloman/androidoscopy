@@ -14,6 +14,7 @@ class NetworkRequestDataProvider(
 
     override val key: String = "network"
     override val interval: Duration = 1.seconds
+    override fun close() = interceptor.clear()
 
     override suspend fun collect(): Map<String, Any> {
         val allRequests = interceptor.getRequests()

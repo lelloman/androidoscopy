@@ -36,6 +36,7 @@ class LeakDataProvider(
      * Event listener to register with LeakCanary.
      */
     val eventListener: EventListener = EventListener { event ->
+        if (!com.lelloman.androidoscopy.Androidoscopy.isSessionActive) return@EventListener
         when (event) {
             is Event.HeapAnalysisDone<*> -> {
                 val analysis = event.heapAnalysis
@@ -55,6 +56,8 @@ class LeakDataProvider(
             "latest" to (leakHistory.firstOrNull()?.toMap() ?: emptyMap<String, Any>())
         )
     }
+
+    override fun close() { leakHistory.clear() }
 
     private fun processAnalysis(analysis: Any) {
         val timestamp = dateFormat.format(Date())

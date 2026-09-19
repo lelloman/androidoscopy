@@ -20,7 +20,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("debug") // Demo only; never use for production apps.
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -56,14 +57,14 @@ dependencies {
     implementation(project(":sdk-ui"))
     implementation(project(":okhttp"))
     implementation(project(":timber"))
-    implementation(project(":leakcanary"))
+    debugImplementation(project(":leakcanary"))
     implementation(project(":workmanager"))
     implementation(project(":coil"))
 
     // Libraries for demo features
     implementation(libs.okhttp)
     implementation(libs.timber)
-    implementation(libs.leakcanary.android)
+    debugImplementation(libs.leakcanary.android)
     implementation(libs.workmanager.runtime.ktx)
     implementation(libs.coil)
     implementation(libs.coil.compose)

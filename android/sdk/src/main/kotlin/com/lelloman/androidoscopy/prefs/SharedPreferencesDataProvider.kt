@@ -48,7 +48,7 @@ class SharedPreferencesDataProvider(
                 "entries" to prefs.all.map { (key, value) ->
                     mapOf(
                         "key" to key,
-                        "value" to value.toString(),
+                        "value" to if (Regex("(?i)password|token|secret|credential|api.?key|auth").containsMatchIn(key)) "[REDACTED]" else value.toString(),
                         "type" to getValueType(value),
                         "prefs_file" to fileName
                     )

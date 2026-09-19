@@ -1,9 +1,13 @@
 package com.lelloman.androidoscopy
 
-import com.lelloman.androidoscopy.anr.AnrDataProvider
 import com.lelloman.androidoscopy.anr.AnrWatchdog
 import com.lelloman.androidoscopy.dashboard.DashboardBuilder
 import kotlinx.serialization.json.JsonElement
+import com.lelloman.androidoscopy.session.SessionMode
+import com.lelloman.androidoscopy.tools.Tool
+import com.lelloman.androidoscopy.data.DataProvider
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 typealias ActionHandler = suspend (args: Map<String, Any>) -> ActionResult
 
@@ -28,15 +32,27 @@ data class AnrConfig(
 )
 
 class AndroidoscopyConfig {
+    var sessionMode: SessionMode = SessionMode.AUTO
+    var releaseIdleTimeout: Duration = 15.minutes
+    internal val tools = linkedMapOf<String, Tool>()
+    internal val providerFactories = mutableListOf<() -> DataProvider>()
+
+    fun tool(tool: Tool) {
+        require(tools.putIfAbsent(tool.name, tool) == null) { "Duplicate tool: ${tool.name}" }
+    }
+
+    /** Factories are evaluated only while a diagnostic session is active. */
+    fun dataProvider(factory: () -> DataProvider) { providerFactories += factory }
     var appName: String? = null
+    @Deprecated("Protocol v2 listens on the phone; select the device from the desktop")
     var hostIp: String? = null
+    @Deprecated("Protocol v2 uses an OS-assigned LAN port")
     var port: Int = 8889
     var enableLogging: Boolean = true
 
     internal var dashboardSchema: JsonElement? = null
     internal val actionHandlers = mutableMapOf<String, ActionHandler>()
     internal var anrConfig: AnrConfig? = null
-    internal var anrDataProvider: AnrDataProvider? = null
 
     /**
      * Enable ANR (Application Not Responding) detection.
@@ -53,7 +69,6 @@ class AndroidoscopyConfig {
             thresholdMs = thresholdMs,
             maxHistory = maxHistory
         )
-        anrDataProvider = AnrDataProvider(thresholdMs, maxHistory)
     }
 
     fun dashboard(block: DashboardBuilder.() -> Unit) {
@@ -68,5 +83,6 @@ class AndroidoscopyConfig {
 
     internal fun validate() {
         requireNotNull(appName) { "appName must be set in AndroidoscopyConfig" }
+        require(releaseIdleTimeout.inWholeMilliseconds in 1..86_400_000L)
     }
 }

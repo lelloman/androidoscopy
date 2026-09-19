@@ -1,6 +1,10 @@
 pub mod config;
+pub mod control;
+pub mod dashboard;
 pub mod discovery;
 pub mod handlers;
+pub mod lan;
+pub mod mcp;
 pub mod protocol;
 pub mod session;
 pub mod state;

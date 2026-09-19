@@ -30,7 +30,7 @@ export interface DashboardSchema {
 export interface Section {
     id: string;
     title: string;
-    layout?: 'row' | 'grid' | 'stack';
+    layout?: 'row' | 'grid' | 'stack' | 'flow';
     columns?: number;
     collapsible?: boolean;
     collapsed_default?: boolean;

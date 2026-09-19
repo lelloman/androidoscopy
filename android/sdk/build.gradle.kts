@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.github.lelloman.androidoscopy"
-version = "1.0.0"
+version = "2.0.0"
 
 android {
     namespace = "com.lelloman.androidoscopy"
@@ -38,9 +38,11 @@ android {
 }
 
 dependencies {
+    implementation("org.conscrypt:conscrypt-android:2.5.2")
+    implementation("com.networknt:json-schema-validator:1.0.87")
     implementation(libs.okhttp)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.kotlinx.coroutines.core)
+    api(libs.kotlinx.serialization.json)
+    api(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
