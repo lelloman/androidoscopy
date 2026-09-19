@@ -45,14 +45,22 @@ pub async fn handle_app_ws(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(|socket| handle_app_connection(socket, state))
+    let tracked = state.tasks.token();
+    ws.on_upgrade(|socket| async move {
+        let _tracked = tracked;
+        handle_app_connection(socket, state).await;
+    })
 }
 
 pub async fn handle_dashboard_ws(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(|socket| handle_dashboard_connection(socket, state))
+    let tracked = state.tasks.token();
+    ws.on_upgrade(|socket| async move {
+        let _tracked = tracked;
+        handle_dashboard_connection(socket, state).await;
+    })
 }
 
 async fn handle_app_connection(socket: WebSocket, state: AppState) {
@@ -65,7 +73,10 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
 
     // Wait for REGISTER message
     let session_id = loop {
-        match receiver.next().await {
+        match tokio::select! {
+            _ = state.shutdown.requested() => None,
+            message = receiver.next() => message,
+        } {
             Some(Ok(Message::Text(text))) => {
                 match serde_json::from_str::<AppMessage>(&text) {
                     Ok(AppMessage::Register { payload, .. }) => {
@@ -148,7 +159,10 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
     });
 
     // Main message loop
-    while let Some(result) = receiver.next().await {
+    while let Some(result) = tokio::select! {
+        _ = state.shutdown.requested() => None,
+        message = receiver.next() => message,
+    } {
         match result {
             Ok(Message::Text(text)) => {
                 match serde_json::from_str::<AppMessage>(&text) {
@@ -264,6 +278,7 @@ async fn handle_app_connection(socket: WebSocket, state: AppState) {
 
     // Clean up
     forward_task.abort();
+    let _ = forward_task.await;
 
     // Mark session as ended
     {
@@ -327,7 +342,10 @@ async fn handle_dashboard_connection(socket: WebSocket, state: AppState) {
     });
 
     // Main message loop - handle incoming ACTION messages
-    while let Some(result) = receiver.next().await {
+    while let Some(result) = tokio::select! {
+        _ = state.shutdown.requested() => None,
+        message = receiver.next() => message,
+    } {
         match result {
             Ok(Message::Text(text)) => {
                 match serde_json::from_str::<DashboardToServiceMessage>(&text) {
@@ -390,6 +408,7 @@ async fn handle_dashboard_connection(socket: WebSocket, state: AppState) {
 
     // Clean up
     forward_task.abort();
+    let _ = forward_task.await;
 
     {
         let mut manager = state.session_manager.lock().await;

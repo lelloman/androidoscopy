@@ -1,8 +1,9 @@
 use axum_server::tls_rustls::RustlsConfig;
 use clap::{Parser, Subcommand};
 use simple_server::axum::{routing::get, Router};
+use simple_server::lifecycle::{Lifecycle, ShutdownOptions, Signals};
 use std::net::SocketAddr;
-use tokio::net::TcpListener;
+use std::time::Duration;
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -67,7 +68,12 @@ async fn main() {
                 std::process::exit(1);
             }
         }
-        Commands::Legacy => run_server().await,
+        Commands::Legacy => {
+            if let Err(error) = run_server().await {
+                eprintln!("{error:#}");
+                std::process::exit(1);
+            }
+        }
         Commands::Mcp { device } => {
             if let Err(e) = androidoscopy::mcp::run(device).await {
                 eprintln!("{e:#}");
@@ -130,93 +136,95 @@ async fn control_request(method: reqwest::Method, path: &str, body: Option<serde
     }
 }
 
-async fn run_server() {
+async fn run_server() -> anyhow::Result<()> {
     let _ = rustls::crypto::ring::default_provider().install_default();
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "androidoscopy_server=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "androidoscopy=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-
+    let signals = Signals::install()?;
     let config = Config::load().unwrap_or_default();
-    let state = AppState::new(config.clone());
-
-    // Start UDP discovery broadcast if enabled
+    let mut lifecycle = Lifecycle::new(ShutdownOptions {
+        grace_period: Duration::from_secs(30),
+    });
+    let shutdown = lifecycle.shutdown();
+    let mut state = AppState::new(config.clone());
+    state.shutdown = shutdown.clone();
     if config.server.udp_discovery_enabled {
-        let websocket_port = config.server.websocket_port;
-        let http_port = config.server.http_port;
-        tokio::spawn(async move {
-            discovery::broadcast_presence(websocket_port, http_port).await;
-        });
+        let stop = shutdown.clone();
+        lifecycle.service("udp-discovery", async move {
+            tokio::select! {
+                _ = stop.requested() => Ok::<_, std::io::Error>(()),
+                _ = discovery::broadcast_presence(config.server.websocket_port, config.server.http_port) =>
+                    Err(std::io::Error::other("UDP discovery exited")),
+            }
+        })?;
     }
-
     let bind_addr: std::net::IpAddr = config
         .server
         .bind_address
         .parse()
         .unwrap_or([127, 0, 0, 1].into());
-
-    // Start HTTP server for dashboard with embedded assets
     let http_addr = SocketAddr::from((bind_addr, config.server.http_port));
-    let http_state = state.clone();
-
-    tokio::spawn(async move {
-        let http_app = Router::new()
-            .route("/ws/dashboard", get(handlers::handle_dashboard_ws))
-            .fallback(dashboard::serve_embedded)
-            .with_state(http_state);
-
-        let listener = TcpListener::bind(http_addr).await.unwrap();
-        info!("Dashboard: http://{}", http_addr);
-        simple_server::axum::serve(listener, http_app)
-            .await
-            .unwrap();
-    });
-
-    // Start WSS server for Android app connections (TLS, no cleartext needed)
+    let http_app = Router::new()
+        .route("/ws/dashboard", get(handlers::handle_dashboard_ws))
+        .fallback(dashboard::serve_embedded)
+        .with_state(state.clone());
+    let listener = simple_server::http::bind(http_addr).await?;
+    info!("Dashboard: http://{}", http_addr);
+    lifecycle.service(
+        "dashboard-http",
+        simple_server::http::serve(listener, http_app, shutdown.clone()),
+    )?;
     let wss_addr = SocketAddr::from((bind_addr, config.server.websocket_port));
-
-    if config.server.tls.enabled {
-        let (cert_path, key_path) = match tls::ensure_certificates(&config.server.tls) {
-            Ok(paths) => paths,
-            Err(e) => {
-                warn!(
-                    "Failed to setup TLS certificates: {}. Falling back to WS.",
-                    e
-                );
-                start_ws_server(wss_addr, state).await;
-                return;
-            }
-        };
-
-        let tls_config = RustlsConfig::from_pem_file(&cert_path, &key_path)
-            .await
-            .expect("Failed to load TLS configuration");
-
-        let wss_app = Router::new()
-            .route("/ws/app", get(handlers::handle_app_ws))
-            .with_state(state);
-
-        info!("Android app: wss://{}/ws/app", wss_addr);
-
-        axum_server::bind_rustls(wss_addr, tls_config)
-            .serve(wss_app.into_make_service())
-            .await
-            .unwrap();
-    } else {
-        warn!("TLS is disabled - Android apps will need cleartext permission");
-        start_ws_server(wss_addr, state).await;
-    }
-}
-
-async fn start_ws_server(addr: SocketAddr, state: AppState) {
     let app = Router::new()
         .route("/ws/app", get(handlers::handle_app_ws))
-        .with_state(state);
-
-    let listener = TcpListener::bind(addr).await.unwrap();
-    info!("Android app: ws://{}/ws/app", addr);
-    simple_server::axum::serve(listener, app).await.unwrap();
+        .with_state(state.clone());
+    let tls_config = if config.server.tls.enabled {
+        match tls::ensure_certificates(&config.server.tls) {
+            Ok((cert, key)) => Some(RustlsConfig::from_pem_file(cert, key).await?),
+            Err(error) => {
+                warn!(%error, "Failed to setup TLS certificates. Falling back to WS.");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let listener = simple_server::http::bind(wss_addr).await?;
+    if let Some(tls_config) = tls_config {
+        let handle = axum_server::Handle::new();
+        let drain_handle = handle.clone();
+        let stop = shutdown.clone();
+        lifecycle.service("tls-shutdown", async move {
+            stop.requested().await;
+            drain_handle.graceful_shutdown(None);
+            Ok::<_, std::io::Error>(())
+        })?;
+        info!("Android app: wss://{}/ws/app", wss_addr);
+        lifecycle.service(
+            "app-wss",
+            axum_server::from_tcp_rustls(listener.into_std()?, tls_config)
+                .handle(handle)
+                .serve(app.into_make_service()),
+        )?;
+    } else {
+        info!("Android app: ws://{}/ws/app", wss_addr);
+        lifecycle.service(
+            "app-ws",
+            simple_server::http::serve(listener, app, shutdown),
+        )?;
+    }
+    let report = lifecycle
+        .run(signals.wait(), async {
+            state.tasks.close();
+            state.tasks.wait().await;
+            Ok::<_, std::io::Error>(())
+        })
+        .await?;
+    info!(?report.reason, "Graceful shutdown complete");
+    Ok(())
 }

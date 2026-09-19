@@ -20,8 +20,8 @@ tokio-rustls = { version = "0.26", default-features = false, features = ["ring",
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 reqwest = { version = "0.12", default-features = false, features = ["json"] }
 rmcp = { version = "0.8", features = ["server", "transport-io"] }
-tokio-util = "0.7"
-simple-server = { git = "https://github.com/lelloman/simple-server", rev = "46a36391ccca522f3ec9aa24206f2b231162dd96", features = ["ws"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+simple-server = { path = "../../simple-server", features = ["ws", "lifecycle"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }

@@ -126,6 +126,7 @@ Type=simple
 ExecStart={binary_path} run
 Restart=on-failure
 RestartSec=5
+TimeoutStopSec=35
 
 [Install]
 WantedBy=default.target

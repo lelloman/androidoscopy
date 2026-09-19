@@ -25,6 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout shared server library
+        run: ../scripts/checkout-simple-server.sh
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-action@stable
         with:
@@ -47,3 +50,6 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+      - name: Check process shutdown
+        run: python3 ../scripts/test-lifecycle.py

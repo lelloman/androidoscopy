@@ -13,6 +13,7 @@ use simple_server::axum::{
     routing::{get, post},
     Json, Router,
 };
+use simple_server::lifecycle::{Lifecycle, Shutdown, ShutdownOptions, Signals};
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -23,7 +24,10 @@ use tokio::{
     sync::{broadcast, mpsc, oneshot},
     time::timeout,
 };
-use tokio_util::sync::CancellationToken;
+use tokio_util::{
+    sync::CancellationToken,
+    task::{AbortOnDropHandle, TaskTracker},
+};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Credential {
@@ -59,6 +63,8 @@ pub struct Controller {
     events: broadcast::Sender<Value>,
     pub token: String,
     peer: String,
+    shutdown: Shutdown,
+    tasks: TaskTracker,
 }
 
 pub fn directory() -> PathBuf {
@@ -111,6 +117,8 @@ impl Controller {
             events: broadcast::channel(256).0,
             token: hex::encode(lan::random()),
             peer,
+            shutdown: Shutdown::new(),
+            tasks: TaskTracker::new(),
         })
     }
     pub fn devices(&self) -> Value {
@@ -143,13 +151,17 @@ impl Controller {
         json!({"type":"SYNC","payload":{"sessions":inner.devices.iter().filter(|(_,d)| !d.session.is_empty() && d.info.is_object())
             .map(|(id,d)| Self::view(id,d)).collect::<Vec<_>>()}})
     }
-    pub fn discover(&self) -> Result<()> {
+    pub async fn discover(&self) -> Result<()> {
         let mdns = mdns_sd::ServiceDaemon::new()?;
         let receiver = mdns.browse("_androidoscopy._tcp.local.")?;
         let this = self.clone();
-        tokio::spawn(async move {
-            let _mdns = mdns;
-            while let Ok(event) = receiver.recv_async().await {
+        let result = async {
+            loop {
+                let event = tokio::select! {
+                    biased;
+                    _ = this.shutdown.requested() => break,
+                    event = receiver.recv_async() => event?,
+                };
                 if let mdns_sd::ServiceEvent::ServiceResolved(info) = event {
                     if let (Some(id), Some(ip)) = (
                         info.get_property_val_str("id"),
@@ -165,10 +177,14 @@ impl Controller {
                     }
                 }
             }
-        });
-        Ok(())
+            Ok::<_, anyhow::Error>(())
+        }
+        .await;
+        mdns.shutdown()?.recv_async().await?;
+        result
     }
     pub fn connect(&self, address: String) -> Result<()> {
+        ensure!(!self.shutdown.is_requested(), "server is shutting down");
         // Connection creation is restricted to the authenticated local controller.
         ensure!(
             address.len() < 256 && address.parse::<std::net::SocketAddr>().is_ok(),
@@ -189,8 +205,13 @@ impl Controller {
             d.status = "connecting".into();
         }
         let this = self.clone();
-        tokio::spawn(async move {
-            if let Err(error) = this.connect_loop(address.clone()).await {
+        self.tasks.spawn(async move {
+            let result = tokio::select! {
+                biased;
+                _ = this.shutdown.requested() => Ok(()),
+                result = this.connect_loop(address.clone()) => result,
+            };
+            if let Err(error) = result {
                 tracing::warn!(%address, %error, "device connection ended");
                 let mut inner = this.inner.lock().unwrap();
                 for d in inner.devices.values_mut().filter(|d| d.address == address) {
@@ -380,13 +401,13 @@ impl Controller {
     ) -> Result<()> {
         let (mut reader, mut writer) = tokio::io::split(stream);
         let (tx, mut incoming) = mpsc::channel(32);
-        let read_task = tokio::spawn(async move {
+        let read_task = AbortOnDropHandle::new(self.tasks.spawn(async move {
             while let Ok(frame) = lan::read_frame(&mut reader).await {
                 if tx.send(frame).await.is_err() {
                     break;
                 }
             }
-        });
+        }));
         let result = async {
             let mut heartbeat = tokio::time::interval(Duration::from_secs(10));
             loop { tokio::select! {
@@ -397,6 +418,7 @@ impl Controller {
             } } Ok(())
         }.await;
         read_task.abort();
+        let _ = read_task.await;
         result
     }
     fn receive(&self, id: &str, session: &str, message: Value) -> Result<()> {
@@ -507,11 +529,14 @@ impl Controller {
             }
         }
         let _guard = CancelOnDrop(self.clone(), device.into(), request.into());
-        let result = async {
-            sender.send(json!({"type":if legacy {"ACTION"} else {"CALL"},"session":session,"id":request,"name":name,"arguments":arguments})).await?;
-            Ok(timeout(Duration::from_millis(duration), receiver).await??)
-        }.await;
-        result
+        tokio::select! {
+            biased;
+            _ = self.shutdown.requested() => anyhow::bail!("server is shutting down"),
+            result = async {
+                sender.send(json!({"type":if legacy {"ACTION"} else {"CALL"},"session":session,"id":request,"name":name,"arguments":arguments})).await?;
+                Ok(timeout(Duration::from_millis(duration), receiver).await??)
+            } => result,
+        }
     }
 }
 
@@ -612,10 +637,13 @@ async fn call(State(c): State<Controller>, Json(v): Json<Value>) -> Response {
     }
 }
 async fn events(State(c): State<Controller>, ws: WebSocketUpgrade) -> impl IntoResponse {
+    let tracked = c.tasks.token();
     ws.on_upgrade(move |socket| async move {
+        let _tracked = tracked;
         let (mut sink, mut source) = socket.split(); let mut events = c.events.subscribe();
         if sink.send(Message::Text(c.sync().to_string().into())).await.is_err() { return }
         loop { tokio::select! {
+            _ = c.shutdown.requested() => break,
             event = events.recv() => match event {
                 Ok(event) => if sink.send(Message::Text(event.to_string().into())).await.is_err() { break },
                 Err(broadcast::error::RecvError::Lagged(_)) => { if sink.send(Message::Text(c.sync().to_string().into())).await.is_err() { break } },
@@ -628,8 +656,11 @@ async fn events(State(c): State<Controller>, ws: WebSocketUpgrade) -> impl IntoR
                     let p = &v["payload"];
                     let device = c.inner.lock().unwrap().devices.iter().find(|(_,d)| d.session == p["session_id"]).map(|(id,_)| id.clone());
                     if let Some(device) = device {
-                        let ctl = c.clone(); let p = p.clone(); tokio::spawn(async move {
-                            let result = ctl.call(&device,p["action_id"].as_str().unwrap_or(""),p["action"].as_str().unwrap_or(""),p.get("args").cloned().unwrap_or(json!({})),true).await;
+                        let ctl = c.clone(); let p = p.clone(); c.tasks.spawn(async move {
+                            let result = tokio::select! {
+                                _ = ctl.shutdown.requested() => return,
+                                result = ctl.call(&device,p["action_id"].as_str().unwrap_or(""),p["action"].as_str().unwrap_or(""),p.get("args").cloned().unwrap_or(json!({})),true) => result,
+                            };
                             let (success,message,data) = match result {
                                 Ok(v) => (v["isError"] != true, v["structuredContent"]["message"].clone(),v["structuredContent"]["data"].clone()),
                                 Err(e) => (false,json!(e.to_string()),Value::Null),
@@ -667,12 +698,37 @@ pub async fn run(config: Config) -> Result<()> {
         directory().join("control-token"),
         controller.token.as_bytes(),
     )?;
-    controller.discover()?;
+    let signals = Signals::install()?;
+    let mut lifecycle = Lifecycle::new(ShutdownOptions {
+        grace_period: Duration::from_secs(30),
+    });
+    let shutdown = lifecycle.shutdown();
+    // Keep the same sticky notification in routes and upgraded sessions.
+    let controller = Controller {
+        shutdown: shutdown.clone(),
+        ..controller
+    };
+    let discovery = controller.clone();
+    lifecycle.service("mdns-discovery", async move { discovery.discover().await })?;
+    let stopping = controller.clone();
+    lifecycle.service("controller-shutdown", async move {
+        stopping.shutdown.requested().await;
+        let mut inner = stopping.inner.lock().unwrap();
+        for device in inner.devices.values() {
+            device.cancel.cancel();
+        }
+        // Release pending HTTP calls before waiting for HTTP draining.
+        inner.pending.clear();
+        Ok::<_, anyhow::Error>(())
+    })?;
     let cleanup = controller.clone();
     let ttl = config.session.ended_session_ttl_seconds;
-    tokio::spawn(async move {
+    lifecycle.service("session-expiry", async move {
         loop {
-            tokio::time::sleep(Duration::from_secs(30)).await;
+            tokio::select! {
+                _ = cleanup.shutdown.requested() => break,
+                _ = tokio::time::sleep(Duration::from_secs(30)) => {},
+            }
             let mut inner = cleanup.inner.lock().unwrap();
             let expired: Vec<String> = inner
                 .devices
@@ -689,13 +745,23 @@ pub async fn run(config: Config) -> Result<()> {
                 }
             }
         }
-    });
+        Ok::<_, anyhow::Error>(())
+    })?;
     eprintln!(
         "Androidoscopy: http://127.0.0.1:{}/#token={}",
         config.server.http_port, controller.token
     );
-    let app = router(controller).fallback(crate::dashboard::serve_embedded);
-    axum::serve(listener, app).await?;
+    let app = router(controller.clone()).fallback(crate::dashboard::serve_embedded);
+    lifecycle.service("http", simple_server::http::serve(listener, app, shutdown))?;
+    let report = lifecycle
+        .run(signals.wait(), async {
+            // HTTP is drained, so no new route can add a task after closing the tracker.
+            controller.tasks.close();
+            controller.tasks.wait().await;
+            Ok::<_, anyhow::Error>(())
+        })
+        .await?;
+    eprintln!("Graceful shutdown complete: {:?}", report.reason);
     Ok(())
 }
 pub async fn request(method: reqwest::Method, path: &str, body: Option<Value>) -> Result<Value> {
@@ -724,8 +790,39 @@ mod tests {
             events: broadcast::channel(16).0,
             token: "test-token".into(),
             peer: "test-peer".into(),
+            shutdown: Shutdown::new(),
+            tasks: TaskTracker::new(),
         }
     }
+    #[tokio::test]
+    async fn shutdown_cancels_pending_calls_and_drains_their_guards() {
+        let c = controller();
+        let (sender, mut receiver) = mpsc::channel(8);
+        c.inner.lock().unwrap().devices.insert(
+            "device".into(),
+            Device {
+                session: "session".into(),
+                sender: Some(sender),
+                tools: vec![json!({"name":"tool"})],
+                ..Default::default()
+            },
+        );
+        let ctl = c.clone();
+        let call = tokio::spawn(async move {
+            ctl.call("device", "request", "tool", json!({}), false)
+                .await
+        });
+        receiver.recv().await.unwrap();
+        c.shutdown.request();
+        assert!(timeout(Duration::from_secs(1), call)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_err());
+        assert!(c.inner.lock().unwrap().pending.is_empty());
+        assert_eq!(receiver.recv().await.unwrap()["type"], "CANCEL");
+    }
+
     #[tokio::test]
     async fn api_rejects_missing_credentials_foreign_origins_and_rebound_hosts() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

@@ -271,3 +271,9 @@ Apps communicate with the server via WebSocket using a JSON protocol. See [DESIG
 ## License
 
 MIT
+
+## Shared server lifecycle
+
+See [Step 02 lifecycle](docs/step-02-lifecycle.md) for shutdown scope and checks.
+Before a fresh Rust build, run `./scripts/checkout-simple-server.sh` to provision
+the reviewed sibling dependency (its revision must be published first).

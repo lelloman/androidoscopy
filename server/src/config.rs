@@ -168,7 +168,9 @@ impl Default for LoggingConfig {
 
 impl Config {
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
-        let config_path = Self::config_path();
+        let config_path = std::env::var_os("ANDROIDOSCOPY_CONFIG")
+            .map(PathBuf::from)
+            .unwrap_or_else(Self::config_path);
 
         if config_path.exists() {
             let content = fs::read_to_string(&config_path)?;
