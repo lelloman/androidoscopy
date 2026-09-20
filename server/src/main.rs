@@ -1,3 +1,4 @@
+mod logging;
 use axum_server::tls_rustls::RustlsConfig;
 use clap::{Parser, Subcommand};
 use simple_server::axum::{routing::get, Router};
@@ -5,7 +6,6 @@ use simple_server::lifecycle::{Lifecycle, ShutdownOptions, Signals};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tracing::{info, warn};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
 mod dashboard;
@@ -138,13 +138,11 @@ async fn control_request(method: reqwest::Method, path: &str, body: Option<serde
 
 async fn run_server() -> anyhow::Result<()> {
     let _ = rustls::crypto::ring::default_provider().install_default();
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "androidoscopy=debug,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    logging::init(
+        tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "androidoscopy=debug,tower_http=debug".into()),
+    )
+    .expect("failed to initialize logging");
     let signals = Signals::install()?;
     let config = Config::load().unwrap_or_default();
     let mut lifecycle = Lifecycle::new(ShutdownOptions {
