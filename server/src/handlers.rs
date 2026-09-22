@@ -45,7 +45,9 @@ pub async fn handle_app_ws(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let tracked = state.tasks.token();
+    let Ok(tracked) = state.tasks.try_acquire("legacy-websocket") else {
+        return simple_server::axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
     ws.on_upgrade(|socket| async move {
         let _tracked = tracked;
         handle_app_connection(socket, state).await;
@@ -56,7 +58,9 @@ pub async fn handle_dashboard_ws(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let tracked = state.tasks.token();
+    let Ok(tracked) = state.tasks.try_acquire("legacy-websocket") else {
+        return simple_server::axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
     ws.on_upgrade(|socket| async move {
         let _tracked = tracked;
         handle_dashboard_connection(socket, state).await;

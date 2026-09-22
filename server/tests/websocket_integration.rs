@@ -760,3 +760,41 @@ async fn test_multiple_dashboards_receive_updates() {
     dashboard1_ws.close(None).await.ok();
     dashboard2_ws.close(None).await.ok();
 }
+
+#[tokio::test]
+async fn shared_ownership_drains_sockets_and_rejects_late_upgrades() {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        let state = AppState::new(Config::default());
+        let app = Router::new()
+            .route("/ws/app", get(handlers::handle_app_ws))
+            .route("/ws/dashboard", get(handlers::handle_dashboard_ws))
+            .with_state(state.clone());
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            simple_server::axum::serve(listener, app).await.unwrap();
+        });
+        let (app_socket, _) = connect_async(format!("ws://{addr}/ws/app")).await.unwrap();
+        let (dashboard, _) = connect_async(format!("ws://{addr}/ws/dashboard"))
+            .await
+            .unwrap();
+        drop(app_socket);
+        state.shutdown.request();
+        state.tasks.close();
+        state.tasks.wait().await;
+        assert!(state.tasks.unfinished().is_empty());
+        for path in ["/ws/app", "/ws/dashboard"] {
+            match connect_async(format!("ws://{addr}{path}")).await {
+                Err(tokio_tungstenite::tungstenite::Error::Http(response)) => {
+                    assert_eq!(response.status().as_u16(), 503);
+                }
+                other => panic!("expected closed admission: {other:?}"),
+            }
+        }
+        drop(dashboard);
+        server.abort();
+        let _ = server.await;
+    })
+    .await
+    .unwrap();
+}

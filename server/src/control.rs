@@ -14,6 +14,7 @@ use simple_server::axum::{
     Json, Router,
 };
 use simple_server::lifecycle::{Lifecycle, Shutdown, ShutdownOptions, Signals};
+use simple_server::tasks::WorkTracker;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -24,10 +25,7 @@ use tokio::{
     sync::{broadcast, mpsc, oneshot},
     time::timeout,
 };
-use tokio_util::{
-    sync::CancellationToken,
-    task::{AbortOnDropHandle, TaskTracker},
-};
+use tokio_util::{sync::CancellationToken, task::AbortOnDropHandle};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Credential {
@@ -64,7 +62,7 @@ pub struct Controller {
     pub token: String,
     peer: String,
     shutdown: Shutdown,
-    tasks: TaskTracker,
+    tasks: WorkTracker,
 }
 
 pub fn directory() -> PathBuf {
@@ -118,7 +116,7 @@ impl Controller {
             token: hex::encode(lan::random()),
             peer,
             shutdown: Shutdown::new(),
-            tasks: TaskTracker::new(),
+            tasks: WorkTracker::new(),
         })
     }
     pub fn devices(&self) -> Value {
@@ -190,6 +188,7 @@ impl Controller {
             address.len() < 256 && address.parse::<std::net::SocketAddr>().is_ok(),
             "expected IP:port"
         );
+        let tracked = self.tasks.try_acquire("controller-connection")?;
         {
             let mut inner = self.inner.lock().unwrap();
             ensure!(
@@ -205,7 +204,8 @@ impl Controller {
             d.status = "connecting".into();
         }
         let this = self.clone();
-        self.tasks.spawn(async move {
+        tokio::spawn(async move {
+            let _tracked = tracked;
             let result = tokio::select! {
                 biased;
                 _ = this.shutdown.requested() => Ok(()),
@@ -401,7 +401,9 @@ impl Controller {
     ) -> Result<()> {
         let (mut reader, mut writer) = tokio::io::split(stream);
         let (tx, mut incoming) = mpsc::channel(32);
-        let read_task = AbortOnDropHandle::new(self.tasks.spawn(async move {
+        let tracked = self.tasks.try_acquire("controller-reader")?;
+        let read_task = AbortOnDropHandle::new(tokio::spawn(async move {
+            let _tracked = tracked;
             while let Ok(frame) = lan::read_frame(&mut reader).await {
                 if tx.send(frame).await.is_err() {
                     break;
@@ -637,7 +639,9 @@ async fn call(State(c): State<Controller>, Json(v): Json<Value>) -> Response {
     }
 }
 async fn events(State(c): State<Controller>, ws: WebSocketUpgrade) -> impl IntoResponse {
-    let tracked = c.tasks.token();
+    let Ok(tracked) = c.tasks.try_acquire("controller-websocket") else {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
     ws.on_upgrade(move |socket| async move {
         let _tracked = tracked;
         let (mut sink, mut source) = socket.split(); let mut events = c.events.subscribe();
@@ -656,7 +660,9 @@ async fn events(State(c): State<Controller>, ws: WebSocketUpgrade) -> impl IntoR
                     let p = &v["payload"];
                     let device = c.inner.lock().unwrap().devices.iter().find(|(_,d)| d.session == p["session_id"]).map(|(id,_)| id.clone());
                     if let Some(device) = device {
-                        let ctl = c.clone(); let p = p.clone(); c.tasks.spawn(async move {
+                        let Ok(tracked) = c.tasks.try_acquire("controller-action") else { break };
+                        let ctl = c.clone(); let p = p.clone(); tokio::spawn(async move {
+                            let _tracked = tracked;
                             let result = tokio::select! {
                                 _ = ctl.shutdown.requested() => return,
                                 result = ctl.call(&device,p["action_id"].as_str().unwrap_or(""),p["action"].as_str().unwrap_or(""),p.get("args").cloned().unwrap_or(json!({})),true) => result,
@@ -791,9 +797,25 @@ mod tests {
             token: "test-token".into(),
             peer: "test-peer".into(),
             shutdown: Shutdown::new(),
-            tasks: TaskTracker::new(),
+            tasks: WorkTracker::new(),
         }
     }
+    #[tokio::test]
+    async fn closed_controller_rejects_connections_without_mutating_devices() {
+        let c = controller();
+        let reservation = c.tasks.try_acquire("pending-upgrade").unwrap();
+        c.tasks.close();
+        assert!(c.clone().connect("127.0.0.1:9".into()).is_err());
+        assert!(c.inner.lock().unwrap().devices.is_empty());
+        assert!(timeout(Duration::from_millis(20), c.tasks.wait())
+            .await
+            .is_err());
+        drop(reservation);
+        timeout(Duration::from_secs(1), c.tasks.wait())
+            .await
+            .unwrap();
+    }
+
     #[tokio::test]
     async fn shutdown_cancels_pending_calls_and_drains_their_guards() {
         let c = controller();
