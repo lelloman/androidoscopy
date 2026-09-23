@@ -22,7 +22,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 reqwest = { version = "0.12", default-features = false, features = ["json"] }
 rmcp = { version = "0.8", features = ["server", "transport-io"] }
 tokio-util = { version = "0.7", features = ["rt"] }
-simple-server = { path = "../../simple-server", features = ["ws", "tasks", "lifecycle", "logging"] }
+simple-server = { path = "../../simple-server", features = ["ws", "tasks", "lifecycle", "logging", "auth"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }

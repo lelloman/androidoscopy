@@ -276,4 +276,5 @@ MIT
 
 See [Step 02 lifecycle](docs/step-02-lifecycle.md) for shutdown scope and checks.
 Before a fresh Rust build, run `./scripts/checkout-simple-server.sh` to provision
-the reviewed sibling dependency (its revision must be published first).
+the reviewed sibling dependency at `0a629da7b5eb5aeeb0ed64aac2c5f96cd4d9717b`
+(`simple-server.rev`; the revision must be published first).

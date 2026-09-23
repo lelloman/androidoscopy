@@ -1839,7 +1839,9 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "futures-util",
+ "http",
  "tokio",
+ "tower-layer",
  "tower-service",
  "tracing",
  "tracing-subscriber",

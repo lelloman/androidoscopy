@@ -9,6 +9,7 @@ use rustls::{
 };
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use simple_server::auth::Access;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -169,24 +170,86 @@ impl Connection {
     }
     pub async fn authorized(&mut self, expected_secret: Option<&[u8]>) -> Result<Value> {
         let value = read_frame(&mut self.stream).await?;
+        let context = AuthorizedFrame {
+            frame: &value,
+            session: &self.hello["session"],
+            expected_secret,
+        };
+        authorized_access().evaluate(&context)?;
+        Ok(value)
+    }
+}
+
+struct AuthorizedFrame<'a> {
+    frame: &'a Value,
+    session: &'a Value,
+    expected_secret: Option<&'a [u8]>,
+}
+
+fn authorized_access<'a>() -> Access<AuthorizedFrame<'a>, Vec<u8>, anyhow::Error> {
+    Access::new(|context: &AuthorizedFrame<'_>| {
         ensure!(
-            value["type"] == "AUTHORIZED" && value["session"] == self.hello["session"],
+            context.frame["type"] == "AUTHORIZED" && context.frame["session"] == *context.session,
             "authorization failed"
         );
-        let secret = hex::decode(value["credential"].as_str().context("missing credential")?)?;
+        let secret = hex::decode(
+            context.frame["credential"]
+                .as_str()
+                .context("missing credential")?,
+        )?;
         ensure!(secret.len() == 32, "invalid credential");
-        if let Some(expected) = expected_secret {
+        Ok(secret)
+    })
+    .with_check(|secret, context| {
+        if let Some(expected) = context.expected_secret {
             if expected != secret {
                 bail!("peer failed mutual authentication");
             }
         }
-        Ok(value)
-    }
+        Ok(())
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn authorized_frame_requires_current_session_and_pinned_credential() {
+        let secret = [7u8; 32];
+        let session = json!("current");
+        let mut frame =
+            json!({"type":"AUTHORIZED", "session":"current", "credential":hex::encode(secret)});
+        let evaluate = |frame: &Value, expected_secret: Option<&[u8]>| {
+            authorized_access().evaluate(&AuthorizedFrame {
+                frame,
+                session: &session,
+                expected_secret,
+            })
+        };
+        assert_eq!(evaluate(&frame, Some(&secret)).unwrap(), secret);
+        assert!(evaluate(&frame, None).is_ok());
+        assert_eq!(
+            evaluate(&frame, Some(&[8u8; 32])).unwrap_err().to_string(),
+            "peer failed mutual authentication"
+        );
+        frame["session"] = json!("stale");
+        assert_eq!(
+            evaluate(&frame, None).unwrap_err().to_string(),
+            "authorization failed"
+        );
+        frame["session"] = json!("current");
+        frame["credential"] = json!("00");
+        assert_eq!(
+            evaluate(&frame, None).unwrap_err().to_string(),
+            "invalid credential"
+        );
+        frame["credential"] = Value::Null;
+        assert_eq!(
+            evaluate(&frame, None).unwrap_err().to_string(),
+            "missing credential"
+        );
+    }
     #[test]
     fn pairing_vectors() {
         assert_eq!(

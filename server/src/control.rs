@@ -4,6 +4,7 @@ use anyhow::{ensure, Context, Result};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use simple_server::auth::{Access, HeaderCredential, RepeatedHeaders, SchemeCase};
 use simple_server::axum::{
     self,
     extract::{ws::Message, Path, State, WebSocketUpgrade},
@@ -547,36 +548,58 @@ async fn auth(
     request: axum::extract::Request,
     next: Next,
 ) -> Response {
-    let headers = request.headers();
-    let host = headers
-        .get(header::HOST)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
-    let local = host == "localhost"
-        || host.starts_with("localhost:")
-        || host == "127.0.0.1"
-        || host.starts_with("127.0.0.1:");
-    let origin_ok = headers
-        .get(header::ORIGIN)
-        .map(|o| o.to_str().ok() == Some(format!("http://{host}").as_str()))
-        .unwrap_or(true);
-    let bearer = headers
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v == format!("Bearer {}", controller.token))
-        .unwrap_or(false);
-    let cookie = headers
-        .get(header::COOKIE)
-        .and_then(|v| v.to_str().ok())
-        .map(|v| {
-            v.split(';')
-                .any(|s| s.trim() == format!("androidoscopy={}", controller.token))
-        })
-        .unwrap_or(false);
-    if !local || !origin_ok || !(bearer || cookie) {
+    if controller_access(controller.token.clone())
+        .evaluate(request.headers())
+        .is_err()
+    {
         return StatusCode::UNAUTHORIZED.into_response();
     }
     next.run(request).await
+}
+
+fn controller_access(token: String) -> Access<axum::http::HeaderMap, (), StatusCode> {
+    Access::new(move |headers: &axum::http::HeaderMap| {
+        // The old gate used the first Authorization value and still tried the
+        // cookie when that value was malformed or incorrect.
+        let bearer = HeaderCredential::new(header::AUTHORIZATION)
+            .with_scheme("Bearer", SchemeCase::Exact)
+            .repeated(RepeatedHeaders::First)
+            .allow_empty(true)
+            .extract(headers)
+            .is_ok_and(|credential| credential.expose() == token);
+        let cookie = headers
+            .get(header::COOKIE)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| {
+                value
+                    .split(';')
+                    .any(|part| part.trim() == format!("androidoscopy={token}"))
+            });
+        if bearer || cookie {
+            Ok(())
+        } else {
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    })
+    .with_check(|_, headers| {
+        let host = headers
+            .get(header::HOST)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("");
+        let local = host == "localhost"
+            || host.starts_with("localhost:")
+            || host == "127.0.0.1"
+            || host.starts_with("127.0.0.1:");
+        let origin_ok = headers
+            .get(header::ORIGIN)
+            .map(|origin| origin.to_str().ok() == Some(format!("http://{host}").as_str()))
+            .unwrap_or(true);
+        if local && origin_ok {
+            Ok(())
+        } else {
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    })
 }
 async fn login(State(c): State<Controller>) -> impl IntoResponse {
     (
@@ -786,6 +809,78 @@ pub async fn request(method: reqwest::Method, path: &str, body: Option<Value>) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn controller_access_preserves_credential_fallback_and_host_policy() {
+        use axum::http::{HeaderMap, HeaderValue};
+
+        let allowed = |headers: &HeaderMap| {
+            controller_access("test-token".into())
+                .evaluate(headers)
+                .is_ok()
+        };
+        let mut headers = HeaderMap::new();
+        headers.insert(header::HOST, HeaderValue::from_static("127.0.0.1:7777"));
+        assert!(!allowed(&headers));
+
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer test-token"),
+        );
+        assert!(allowed(&headers));
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("bearer test-token"),
+        );
+        assert!(!allowed(&headers));
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer  test-token"),
+        );
+        assert!(!allowed(&headers));
+
+        headers.insert(
+            header::COOKIE,
+            HeaderValue::from_static("other=1; androidoscopy=test-token"),
+        );
+        assert!(allowed(&headers)); // Invalid Authorization still allows the cookie.
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_bytes(b"\xff").unwrap(),
+        );
+        assert!(allowed(&headers)); // Invalid header text has the same fallback.
+
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer wrong"),
+        );
+        headers.append(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer test-token"),
+        );
+        assert!(allowed(&headers)); // The cookie still authorizes this request.
+        headers.remove(header::COOKIE);
+        assert!(!allowed(&headers)); // Only the first Authorization value is used.
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer test-token"),
+        );
+        assert!(allowed(&headers));
+
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("http://127.0.0.1:7777"),
+        );
+        assert!(allowed(&headers));
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("https://evil.example"),
+        );
+        assert!(!allowed(&headers));
+        headers.remove(header::ORIGIN);
+        headers.insert(header::HOST, HeaderValue::from_static("evil.example"));
+        assert!(!allowed(&headers));
+    }
     fn controller() -> Controller {
         Controller {
             inner: Arc::new(Mutex::new(Inner {
@@ -863,6 +958,45 @@ mod tests {
                 .unwrap()
                 .status(),
             200
+        );
+        assert_eq!(
+            client
+                .get(&url)
+                .header(header::COOKIE, "androidoscopy=test-token")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+        assert_eq!(
+            client
+                .get(&url)
+                .header(header::AUTHORIZATION, "Bearer wrong")
+                .header(header::COOKIE, "androidoscopy=test-token")
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+        assert_eq!(
+            client
+                .post(format!("http://{address}/api/v2/auth"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            401
+        );
+        assert_eq!(
+            client
+                .get(format!("http://{address}/api/v2/events"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            401
         );
         assert_eq!(
             client
