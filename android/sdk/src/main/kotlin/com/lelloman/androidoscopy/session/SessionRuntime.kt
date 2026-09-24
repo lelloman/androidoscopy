@@ -44,7 +44,7 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
     @Volatile private var credential: ByteArray? = null
     @Volatile private var peer: String? = null
     @Volatile private var foreground = false
-    private var lastPairAttempt = Long.MIN_VALUE / 2
+    private val pairingAttemptGate = PairingAttemptGate()
     val isActive get() = clock.active && !clock.isExpired()
 
     fun initialize() {
@@ -226,7 +226,7 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
             } else {
                 require(hello["type"]?.jsonPrimitive?.content == "PAIR")
                 val now = SystemClock.elapsedRealtime()
-                require(now - lastPairAttempt >= 5_000) { "PAIRING_RATE_LIMITED" }; lastPairAttempt = now
+                require(pairingAttemptGate.admit(now)) { "PAIRING_RATE_LIMITED" }
                 val commitment = PairingCrypto.unhex(hello.getValue("commitment").jsonPrimitive.content)
                 val nonce = PairingCrypto.random()
                 wire.write(buildJsonObject { put("type", "CHALLENGE"); put("nonce", PairingCrypto.hex(nonce)) })

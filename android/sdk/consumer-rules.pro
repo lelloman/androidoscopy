@@ -10,3 +10,5 @@
 # Optional Joni backend is not packaged or enabled; the SDK uses Java regex.
 -dontwarn org.joni.**
 -dontwarn org.jcodings.**
+# JNI resolves the method by its class and method names.
+-keep class com.lelloman.androidoscopy.session.PairingRateLimit { *; }

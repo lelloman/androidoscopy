@@ -234,10 +234,20 @@ npm run test:e2e    # Run E2E tests
 
 ### Android SDK
 
+The device pairing limit is supplied by a Rust JNI library built from the
+reviewed `simple-server` rate-limit API. Install Rust with the four Android
+targets (`aarch64-linux-android`, `armv7-linux-androideabi`,
+`i686-linux-android`, `x86_64-linux-android`) and Android NDK 27.0.12077973.
+Run `./scripts/checkout-simple-server.sh` from the repository root before an
+Android SDK build. Gradle builds and packages all four ABIs into the SDK AAR;
+there is no runtime download. SDK unit tests also build a host JNI library.
+CI and JitPack use `./scripts/prepare-android-native.sh` for these build inputs.
+
 ```bash
 cd android
 ./gradlew :sdk:test             # Unit tests
 ./gradlew :sdk:connectedTest    # Instrumented tests
+./gradlew :sdk:assembleRelease  # AAR with all four native ABIs
 ```
 
 ### E2E Tests
@@ -276,5 +286,5 @@ MIT
 
 See [Step 02 lifecycle](docs/step-02-lifecycle.md) for shutdown scope and checks.
 Before a fresh Rust build, run `./scripts/checkout-simple-server.sh` to provision
-the reviewed sibling dependency at `0a629da7b5eb5aeeb0ed64aac2c5f96cd4d9717b`
+the reviewed sibling dependency at `66b5259b22c6c48687f822beca497f03ad12c2f7`
 (`simple-server.rev`; the revision must be published first).

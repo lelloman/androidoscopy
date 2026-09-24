@@ -1,0 +1,11 @@
+[package]
+name = "androidoscopy-pairing-rate-limit"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+simple-server = { path = "../../simple-server", default-features = false, features = ["rate-limit"] }
