@@ -23,13 +23,9 @@
 
 use chrono::Utc;
 use futures::{SinkExt, StreamExt};
-use simple_server::axum::{
-    extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
-        State,
-    },
-    response::IntoResponse,
-};
+use simple_server::axum::extract::ws::{Message, WebSocket};
+use simple_server::web::compat::WebSocketUpgrade;
+use simple_server::web::{extract::State, response::IntoResponse};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -46,7 +42,7 @@ pub async fn handle_app_ws(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let Ok(tracked) = state.tasks.try_acquire("legacy-websocket") else {
-        return simple_server::axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+        return simple_server::web::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
     ws.on_upgrade(|socket| async move {
         let _tracked = tracked;
@@ -59,7 +55,7 @@ pub async fn handle_dashboard_ws(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let Ok(tracked) = state.tasks.try_acquire("legacy-websocket") else {
-        return simple_server::axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+        return simple_server::web::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
     ws.on_upgrade(|socket| async move {
         let _tracked = tracked;

@@ -286,5 +286,14 @@ MIT
 
 See [Step 02 lifecycle](docs/step-02-lifecycle.md) for shutdown scope and checks.
 Before a fresh Rust build, run `./scripts/checkout-simple-server.sh` to provision
-the reviewed sibling dependency at `66b5259b22c6c48687f822beca497f03ad12c2f7`
+the reviewed sibling dependency at `cdb9e6304811d7cb0ae8de8333d4975a00597f42`
 (`simple-server.rev`; the revision must be published first).
+
+## Shared HTTP routing
+
+The controller, legacy app/dashboard routes, embedded dashboard fallback and
+HTTP test servers use simple-server's `web` routing, extraction, middleware and
+response contracts. TLS still uses the existing `axum-server` adapter with a
+shared Tower service factory. WebSocket protocol types remain an explicit
+`web-compat` boundary. See [Step 11 routing](docs/step-11-routing.md) for scope,
+verification and remaining Axum exposure.

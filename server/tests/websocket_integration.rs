@@ -11,7 +11,7 @@ use androidoscopy::state::AppState;
 
 use futures::{SinkExt, StreamExt};
 use serde_json::json;
-use simple_server::axum::{routing::get, Router};
+use simple_server::web::{routing::get, Router};
 use tokio::net::TcpListener;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
@@ -30,7 +30,9 @@ async fn spawn_test_server() -> SocketAddr {
     let addr = listener.local_addr().unwrap();
 
     tokio::spawn(async move {
-        simple_server::axum::serve(listener, app).await.unwrap();
+        simple_server::web::serve(listener, app, simple_server::lifecycle::Shutdown::new())
+            .await
+            .unwrap();
     });
 
     // Give the server a moment to start
@@ -772,7 +774,9 @@ async fn shared_ownership_drains_sockets_and_rejects_late_upgrades() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
-            simple_server::axum::serve(listener, app).await.unwrap();
+            simple_server::web::serve(listener, app, simple_server::lifecycle::Shutdown::new())
+                .await
+                .unwrap();
         });
         let (app_socket, _) = connect_async(format!("ws://{addr}/ws/app")).await.unwrap();
         let (dashboard, _) = connect_async(format!("ws://{addr}/ws/dashboard"))

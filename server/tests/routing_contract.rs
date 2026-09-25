@@ -1,5 +1,5 @@
 use androidoscopy::{dashboard, AppState, Config};
-use simple_server::axum::{routing::get, Router};
+use simple_server::web::{routing::get, Router};
 
 #[tokio::test]
 async fn dashboard_preserves_assets_spa_fallback_and_head() {
@@ -12,8 +12,11 @@ async fn dashboard_preserves_assets_spa_fallback_and_head() {
         .with_state(AppState::new(Config::default()));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
-    let task =
-        tokio::spawn(async move { simple_server::axum::serve(listener, app).await.unwrap() });
+    let task = tokio::spawn(async move {
+        simple_server::web::serve(listener, app, simple_server::lifecycle::Shutdown::new())
+            .await
+            .unwrap()
+    });
     let client = reqwest::Client::new();
     let base = format!("http://{address}");
     let index = client.get(&base).send().await.unwrap();

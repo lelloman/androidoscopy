@@ -5,17 +5,19 @@ use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use simple_server::auth::{Access, HeaderCredential, RepeatedHeaders, SchemeCase};
-use simple_server::axum::{
+use simple_server::axum::extract::ws::Message;
+use simple_server::lifecycle::{Lifecycle, Shutdown, ShutdownOptions, Signals};
+use simple_server::tasks::WorkTracker;
+use simple_server::web::compat::WebSocketUpgrade;
+use simple_server::web::{
     self,
-    extract::{ws::Message, Path, State, WebSocketUpgrade},
+    extract::{Path, State},
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
-use simple_server::lifecycle::{Lifecycle, Shutdown, ShutdownOptions, Signals};
-use simple_server::tasks::WorkTracker;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -545,7 +547,7 @@ impl Controller {
 
 async fn auth(
     State(controller): State<Controller>,
-    request: axum::extract::Request,
+    request: web::extract::Request,
     next: Next,
 ) -> Response {
     if controller_access(controller.token.clone())
@@ -557,8 +559,8 @@ async fn auth(
     next.run(request).await
 }
 
-fn controller_access(token: String) -> Access<axum::http::HeaderMap, (), StatusCode> {
-    Access::new(move |headers: &axum::http::HeaderMap| {
+fn controller_access(token: String) -> Access<web::http::HeaderMap, (), StatusCode> {
+    Access::new(move |headers: &web::http::HeaderMap| {
         // The old gate used the first Authorization value and still tried the
         // cookie when that value was malformed or incorrect.
         let bearer = HeaderCredential::new(header::AUTHORIZATION)
@@ -781,7 +783,7 @@ pub async fn run(config: Config) -> Result<()> {
         config.server.http_port, controller.token
     );
     let app = router(controller.clone()).fallback(crate::dashboard::serve_embedded);
-    lifecycle.service("http", simple_server::http::serve(listener, app, shutdown))?;
+    lifecycle.service("http", simple_server::web::serve(listener, app, shutdown))?;
     let report = lifecycle
         .run(signals.wait(), async {
             // HTTP is drained, so no new route can add a task after closing the tracker.
@@ -812,7 +814,7 @@ mod tests {
 
     #[test]
     fn controller_access_preserves_credential_fallback_and_host_policy() {
-        use axum::http::{HeaderMap, HeaderValue};
+        use web::http::{HeaderMap, HeaderValue};
 
         let allowed = |headers: &HeaderMap| {
             controller_access("test-token".into())
@@ -944,8 +946,11 @@ mod tests {
     async fn controller_login_and_http_extraction_contracts() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let task =
-            tokio::spawn(async move { axum::serve(listener, router(controller())).await.unwrap() });
+        let task = tokio::spawn(async move {
+            web::serve(listener, router(controller()), Shutdown::new())
+                .await
+                .unwrap()
+        });
         let base = format!("http://{address}/api/v2");
         let client = reqwest::Client::new();
         let login = client
@@ -1003,8 +1008,11 @@ mod tests {
     async fn api_rejects_missing_credentials_foreign_origins_and_rebound_hosts() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let task =
-            tokio::spawn(async move { axum::serve(listener, router(controller())).await.unwrap() });
+        let task = tokio::spawn(async move {
+            web::serve(listener, router(controller()), Shutdown::new())
+                .await
+                .unwrap()
+        });
         let url = format!("http://{address}/api/v2/devices");
         let client = reqwest::Client::new();
         assert_eq!(client.get(&url).send().await.unwrap().status(), 401);

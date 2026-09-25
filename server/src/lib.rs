@@ -9,15 +9,15 @@ pub mod protocol;
 pub mod session;
 pub mod state;
 
-use simple_server::axum::{routing::get, Router};
+use simple_server::web::{routing::get, Router};
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 
 pub use config::Config;
 pub use state::AppState;
 
-/// Creates the Axum router for the server.
-/// Useful for testing - can be used with `simple_server::axum::serve` directly.
+/// Creates the shared HTTP router for the server.
+/// Useful for testing - uses `simple_server::web::serve` with an explicit shutdown signal.
 pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/ws/app", get(handlers::handle_app_ws))
@@ -37,7 +37,9 @@ pub async fn start_test_server(
     let addr = listener.local_addr()?;
 
     let handle = tokio::spawn(async move {
-        simple_server::axum::serve(listener, app).await.ok();
+        simple_server::web::serve(listener, app, simple_server::lifecycle::Shutdown::new())
+            .await
+            .ok();
     });
 
     Ok((addr, handle))

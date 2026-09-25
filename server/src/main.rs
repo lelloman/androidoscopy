@@ -1,8 +1,8 @@
 mod logging;
 use axum_server::tls_rustls::RustlsConfig;
 use clap::{Parser, Subcommand};
-use simple_server::axum::{routing::get, Router};
 use simple_server::lifecycle::{Lifecycle, ShutdownOptions, Signals};
+use simple_server::web::{routing::get, Router};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tracing::{info, warn};
@@ -175,7 +175,7 @@ async fn run_server() -> anyhow::Result<()> {
     info!("Dashboard: http://{}", http_addr);
     lifecycle.service(
         "dashboard-http",
-        simple_server::http::serve(listener, http_app, shutdown.clone()),
+        simple_server::web::serve(listener, http_app, shutdown.clone()),
     )?;
     let wss_addr = SocketAddr::from((bind_addr, config.server.websocket_port));
     let app = Router::new()
@@ -211,10 +211,7 @@ async fn run_server() -> anyhow::Result<()> {
         )?;
     } else {
         info!("Android app: ws://{}/ws/app", wss_addr);
-        lifecycle.service(
-            "app-ws",
-            simple_server::http::serve(listener, app, shutdown),
-        )?;
+        lifecycle.service("app-ws", simple_server::web::serve(listener, app, shutdown))?;
     }
     let report = lifecycle
         .run(signals.wait(), async {

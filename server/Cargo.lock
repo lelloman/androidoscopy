@@ -1838,9 +1838,13 @@ name = "simple-server"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "bytes",
  "futures-util",
  "http",
+ "http-body",
+ "serde",
  "tokio",
+ "tower",
  "tower-layer",
  "tower-service",
  "tracing",
