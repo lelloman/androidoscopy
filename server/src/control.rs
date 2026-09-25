@@ -941,6 +941,65 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn controller_login_and_http_extraction_contracts() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task =
+            tokio::spawn(async move { axum::serve(listener, router(controller())).await.unwrap() });
+        let base = format!("http://{address}/api/v2");
+        let client = reqwest::Client::new();
+        let login = client
+            .post(format!("{base}/auth"))
+            .bearer_auth("test-token")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(login.status(), 200);
+        assert_eq!(
+            login.headers()[header::SET_COOKIE],
+            "androidoscopy=test-token; HttpOnly; SameSite=Strict; Path=/"
+        );
+        assert_eq!(login.json::<Value>().await.unwrap(), json!({"ok":true}));
+        let missing_type = client
+            .post(format!("{base}/connect"))
+            .bearer_auth("test-token")
+            .body("{}")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(missing_type.status(), 415);
+        let invalid = client
+            .post(format!("{base}/connect"))
+            .bearer_auth("test-token")
+            .header(header::CONTENT_TYPE, "application/json")
+            .body("{")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(invalid.status(), 400);
+        let method = client
+            .post(format!("{base}/devices"))
+            .bearer_auth("test-token")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(method.status(), 405);
+        assert!(method.headers()[header::ALLOW]
+            .to_str()
+            .unwrap()
+            .contains("GET"));
+        let head = client
+            .head(format!("{base}/devices"))
+            .bearer_auth("test-token")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(head.status(), 200);
+        assert!(head.bytes().await.unwrap().is_empty());
+        task.abort();
+    }
+
+    #[tokio::test]
     async fn api_rejects_missing_credentials_foreign_origins_and_rebound_hosts() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
