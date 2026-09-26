@@ -5,10 +5,9 @@ use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use simple_server::auth::{Access, HeaderCredential, RepeatedHeaders, SchemeCase};
-use simple_server::axum::extract::ws::Message;
 use simple_server::lifecycle::{Lifecycle, Shutdown, ShutdownOptions, Signals};
 use simple_server::tasks::WorkTracker;
-use simple_server::web::compat::WebSocketUpgrade;
+use simple_server::web::ws::{Message, WebSocketUpgrade};
 use simple_server::web::{
     self,
     extract::{Path, State},
@@ -897,6 +896,100 @@ mod tests {
             tasks: WorkTracker::new(),
         }
     }
+    #[tokio::test]
+    async fn controller_websocket_preserves_auth_events_and_shutdown() {
+        use tokio_tungstenite::{
+            connect_async,
+            tungstenite::{client::IntoClientRequest, Error, Message as ClientMessage},
+        };
+
+        timeout(Duration::from_secs(5), async {
+            let c = controller();
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let app = router(c.clone());
+            let server = tokio::spawn(async move {
+                web::serve(listener, app, Shutdown::new()).await.unwrap();
+            });
+            let url = format!("ws://{address}/api/v2/events");
+            match connect_async(&url).await {
+                Err(Error::Http(response)) => assert_eq!(response.status().as_u16(), 401),
+                other => panic!("expected unauthenticated rejection: {other:?}"),
+            }
+            let mut hostile = url.clone().into_client_request().unwrap();
+            hostile
+                .headers_mut()
+                .insert("Authorization", "Bearer test-token".parse().unwrap());
+            hostile
+                .headers_mut()
+                .insert("Origin", "https://evil.example".parse().unwrap());
+            match connect_async(hostile).await {
+                Err(Error::Http(response)) => assert_eq!(response.status().as_u16(), 401),
+                other => panic!("expected foreign origin rejection: {other:?}"),
+            }
+            let mut clients = Vec::new();
+            for cookie in [false, true] {
+                let mut request = url.clone().into_client_request().unwrap();
+                request.headers_mut().insert(
+                    "Authorization",
+                    if cookie {
+                        "Bearer wrong".parse().unwrap()
+                    } else {
+                        "Bearer test-token".parse().unwrap()
+                    },
+                );
+                if cookie {
+                    request
+                        .headers_mut()
+                        .insert("Cookie", "androidoscopy=test-token".parse().unwrap());
+                }
+                let (mut socket, response) = connect_async(request).await.unwrap();
+                assert_eq!(response.status().as_u16(), 101);
+                let sync = socket.next().await.unwrap().unwrap();
+                let sync: Value = serde_json::from_str(sync.to_text().unwrap()).unwrap();
+                assert_eq!(sync["type"], "SYNC");
+                assert_eq!(sync["payload"]["sessions"], json!([]));
+                clients.push(socket);
+            }
+            clients[0]
+                .send(ClientMessage::Ping(vec![1, 2, 3]))
+                .await
+                .unwrap();
+            assert_eq!(
+                clients[0].next().await.unwrap().unwrap(),
+                ClientMessage::Pong(vec![1, 2, 3])
+            );
+            clients[0]
+                .send(ClientMessage::Text("invalid JSON".into()))
+                .await
+                .unwrap();
+            let event = json!({"type":"SESSION_ENDED","payload":{"session_id":"probe"}});
+            c.emit(event.clone());
+            for client in &mut clients {
+                let delivered = client.next().await.unwrap().unwrap();
+                assert_eq!(
+                    serde_json::from_str::<Value>(delivered.to_text().unwrap()).unwrap(),
+                    event
+                );
+            }
+            c.tasks.close();
+            c.shutdown.request();
+            c.tasks.wait().await;
+            assert!(c.tasks.unfinished().is_empty());
+            let mut late = url.into_client_request().unwrap();
+            late.headers_mut()
+                .insert("Authorization", "Bearer test-token".parse().unwrap());
+            match connect_async(late).await {
+                Err(Error::Http(response)) => assert_eq!(response.status().as_u16(), 503),
+                other => panic!("expected closed admission: {other:?}"),
+            }
+            server.abort();
+            let _ = server.await;
+        })
+        .await
+        .unwrap();
+    }
+
     #[tokio::test]
     async fn closed_controller_rejects_connections_without_mutating_devices() {
         let c = controller();

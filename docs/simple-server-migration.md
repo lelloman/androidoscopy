@@ -1,5 +1,9 @@
 # Step 01: Axum centralization
 
+Current adoption continues in [Step 12 WebSockets](step-12-websockets.md).
+The revisions and compatibility boundaries below describe the historical
+Step 01 migration.
+
 Androidoscopy uses the public `simple-server` Git dependency at revision
 `46a36391ccca522f3ec9aa24206f2b231162dd96`, with the `ws` feature. It provides
 Axum 0.8.9, replacing the directly managed Axum 0.7.9 dependency. Source and

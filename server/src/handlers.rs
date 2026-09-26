@@ -23,8 +23,7 @@
 
 use chrono::Utc;
 use futures::{SinkExt, StreamExt};
-use simple_server::axum::extract::ws::{Message, WebSocket};
-use simple_server::web::compat::WebSocketUpgrade;
+use simple_server::web::ws::{Message, WebSocket, WebSocketUpgrade};
 use simple_server::web::{extract::State, response::IntoResponse};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
