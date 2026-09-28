@@ -1,8 +1,11 @@
 mod logging;
-use axum_server::tls_rustls::RustlsConfig;
 use clap::{Parser, Subcommand};
 use simple_server::lifecycle::{Lifecycle, ShutdownOptions, Signals};
-use simple_server::web::{routing::get, Router};
+use simple_server::web::{
+    routing::get,
+    tls::{self as web_tls, TlsConfig},
+    Router,
+};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tracing::{info, warn};
@@ -183,7 +186,7 @@ async fn run_server() -> anyhow::Result<()> {
         .with_state(state.clone());
     let tls_config = if config.server.tls.enabled {
         match tls::ensure_certificates(&config.server.tls) {
-            Ok((cert, key)) => Some(RustlsConfig::from_pem_file(cert, key).await?),
+            Ok((cert, key)) => Some(TlsConfig::from_pem_file(cert, key).await?),
             Err(error) => {
                 warn!(%error, "Failed to setup TLS certificates. Falling back to WS.");
                 None
@@ -194,20 +197,10 @@ async fn run_server() -> anyhow::Result<()> {
     };
     let listener = simple_server::http::bind(wss_addr).await?;
     if let Some(tls_config) = tls_config {
-        let handle = axum_server::Handle::new();
-        let drain_handle = handle.clone();
-        let stop = shutdown.clone();
-        lifecycle.service("tls-shutdown", async move {
-            stop.requested().await;
-            drain_handle.graceful_shutdown(None);
-            Ok::<_, std::io::Error>(())
-        })?;
         info!("Android app: wss://{}/ws/app", wss_addr);
         lifecycle.service(
             "app-wss",
-            axum_server::from_tcp_rustls(listener.into_std()?, tls_config)
-                .handle(handle)
-                .serve(app.into_make_service()),
+            web_tls::serve(listener, app, tls_config, shutdown),
         )?;
     } else {
         info!("Android app: ws://{}/ws/app", wss_addr);

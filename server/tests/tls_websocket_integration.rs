@@ -1,17 +1,18 @@
 use std::{sync::Arc, time::Duration};
 
 use androidoscopy::{create_router, AppState, Config};
-use axum_server::tls_rustls::RustlsConfig;
 use futures::{SinkExt, StreamExt};
+use simple_server::lifecycle::Shutdown;
+use simple_server::web::tls::{self, TlsConfig};
 use tokio_tungstenite::{connect_async_tls_with_config, tungstenite::Message, Connector};
 
 #[tokio::test]
 async fn app_can_register_over_tls() {
     let _ = rustls::crypto::ring::default_provider().install_default();
     // Trust only this test's certificate: exercise TLS verification and the
-    // Axum upgrade through the same axum-server adapter used in production.
+    // WebSocket upgrade through the same shared TLS adapter used in production.
     let certificate = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
-    let tls = RustlsConfig::from_pem(
+    let tls = TlsConfig::from_pem(
         certificate.cert.pem().into_bytes(),
         certificate.key_pair.serialize_pem().into_bytes(),
     )
@@ -23,12 +24,15 @@ async fn app_can_register_over_tls() {
         .with_root_certificates(roots)
         .with_no_client_auth();
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
-    let handle = axum_server::Handle::new();
-    let server = axum_server::from_tcp_rustls(listener, tls)
-        .handle(handle.clone())
-        .serve(create_router(AppState::new(Config::default())).into_make_service());
+    let shutdown = Shutdown::new();
+    let server = tls::serve(
+        listener,
+        create_router(AppState::new(Config::default())),
+        tls,
+        shutdown.clone(),
+    );
     let task = tokio::spawn(server);
 
     tokio::time::timeout(Duration::from_secs(5), async {
@@ -60,6 +64,10 @@ async fn app_can_register_over_tls() {
     })
     .await
     .expect("TLS registration timed out");
-    handle.shutdown();
-    task.await.unwrap().unwrap();
+    shutdown.request();
+    tokio::time::timeout(Duration::from_secs(5), task)
+        .await
+        .expect("TLS server did not stop after shutdown")
+        .unwrap()
+        .unwrap();
 }

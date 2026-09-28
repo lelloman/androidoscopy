@@ -25,7 +25,6 @@ name = "androidoscopy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "axum-server",
  "chrono",
  "clap",
  "dirs",
@@ -1838,6 +1837,7 @@ name = "simple-server"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "axum-server",
  "bytes",
  "futures-util",
  "http",
