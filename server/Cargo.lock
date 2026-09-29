@@ -31,6 +31,7 @@ dependencies = [
  "futures",
  "hex",
  "hmac",
+ "lelloman-simple-server",
  "local-ip-address",
  "log",
  "mdns-sd",
@@ -44,7 +45,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "simple-server",
  "tokio",
  "tokio-rustls",
  "tokio-tungstenite 0.24.0",
@@ -1025,6 +1025,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "lelloman-simple-server"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f3187c81c94701cd041df7ab17ce968b73c967db77c551170e3c24960b6c77a"
+dependencies = [
+ "axum",
+ "axum-server",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body",
+ "serde",
+ "tokio",
+ "tower",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.178"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1830,25 +1851,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7664a098b8e616bdfcc2dc0e9ac44eb231eedf41db4e9fe95d8d32ec728dedad"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "simple-server"
-version = "0.1.0"
-dependencies = [
- "axum",
- "axum-server",
- "bytes",
- "futures-util",
- "http",
- "http-body",
- "serde",
- "tokio",
- "tower",
- "tower-layer",
- "tower-service",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

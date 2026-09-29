@@ -238,8 +238,7 @@ The device pairing limit is supplied by a Rust JNI library built from the
 reviewed `simple-server` rate-limit API. Install Rust with the four Android
 targets (`aarch64-linux-android`, `armv7-linux-androideabi`,
 `i686-linux-android`, `x86_64-linux-android`) and Android NDK 27.0.12077973.
-Run `./scripts/checkout-simple-server.sh` from the repository root before an
-Android SDK build. Gradle builds and packages all four ABIs into the SDK AAR;
+Cargo downloads the pinned shared library from crates.io during the Android SDK build. Gradle builds and packages all four ABIs into the SDK AAR;
 there is no runtime download. SDK unit tests also build a host JNI library.
 CI and JitPack use `./scripts/prepare-android-native.sh` for these build inputs.
 
@@ -285,9 +284,8 @@ MIT
 ## Shared server lifecycle
 
 See [Step 02 lifecycle](docs/step-02-lifecycle.md) for shutdown scope and checks.
-Before a fresh Rust build, run `./scripts/checkout-simple-server.sh` to provision
-the reviewed sibling dependency at `e34c6d68b8ce7ffa1dd20748a3f933a886beae20`
-(`simple-server.rev`; the revision must be published first).
+Cargo downloads `lelloman-simple-server = "=0.1.0"` from crates.io, aliased as
+`simple-server`. No sibling checkout or private registry credentials are required.
 
 ## Shared HTTP routing
 

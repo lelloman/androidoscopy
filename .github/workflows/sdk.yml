@@ -6,7 +6,6 @@ on:
     paths:
       - 'android/**'
       - 'pairing-rate-limit/**'
-      - 'simple-server.rev'
       - 'scripts/prepare-android-native.sh'
       - 'scripts/check-pairing-native-artifact.py'
       - '.github/workflows/sdk.yml'
@@ -15,7 +14,6 @@ on:
     paths:
       - 'android/**'
       - 'pairing-rate-limit/**'
-      - 'simple-server.rev'
       - 'scripts/prepare-android-native.sh'
       - 'scripts/check-pairing-native-artifact.py'
       - '.github/workflows/sdk.yml'

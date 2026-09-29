@@ -6,7 +6,7 @@ version = 4
 name = "androidoscopy-pairing-rate-limit"
 version = "0.1.0"
 dependencies = [
- "simple-server",
+ "lelloman-simple-server",
 ]
 
 [[package]]
@@ -42,14 +42,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
-name = "pin-project-lite"
-version = "0.2.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
-
-[[package]]
-name = "simple-server"
+name = "lelloman-simple-server"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f3187c81c94701cd041df7ab17ce968b73c967db77c551170e3c24960b6c77a"
 dependencies = [
  "http",
  "http-body",
@@ -57,6 +53,12 @@ dependencies = [
  "tower-layer",
  "tower-service",
 ]
+
+[[package]]
+name = "pin-project-lite"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
 name = "tower-layer"

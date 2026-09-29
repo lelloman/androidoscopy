@@ -46,12 +46,10 @@ val pairingNativeTargets = mapOf(
     "x86_64" to Pair("x86_64-linux-android", "x86_64-linux-android24-clang")
 )
 val pairingNativeManifest = rootProject.file("../pairing-rate-limit/Cargo.toml")
-val sharedLibrarySource = rootProject.file("../../simple-server")
 val pairingNativeOutput = layout.buildDirectory.dir("generated/pairingJniLibs")
 val buildPairingNative = tasks.register("buildPairingNative") {
     inputs.files(fileTree(pairingNativeManifest.parentFile.resolve("src")), pairingNativeManifest,
-        rootProject.file("../pairing-rate-limit/Cargo.lock"), rootProject.file("../simple-server.rev"),
-        sharedLibrarySource.resolve("Cargo.toml"), fileTree(sharedLibrarySource.resolve("src")))
+        rootProject.file("../pairing-rate-limit/Cargo.lock"))
     outputs.dir(pairingNativeOutput)
     doLast {
         val ndkHost = if (System.getProperty("os.name").lowercase().contains("mac")) "darwin-x86_64" else "linux-x86_64"
@@ -82,8 +80,7 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders"
 val pairingHostOutput = layout.buildDirectory.dir("pairingHostRustTarget")
 val buildPairingHostNative = tasks.register<Exec>("buildPairingHostNative") {
     inputs.files(fileTree(pairingNativeManifest.parentFile.resolve("src")), pairingNativeManifest,
-        rootProject.file("../pairing-rate-limit/Cargo.lock"), rootProject.file("../simple-server.rev"),
-        sharedLibrarySource.resolve("Cargo.toml"), fileTree(sharedLibrarySource.resolve("src")))
+        rootProject.file("../pairing-rate-limit/Cargo.lock"))
     outputs.dir(pairingHostOutput)
     commandLine("cargo", "build", "--release", "--locked", "--manifest-path",
         pairingNativeManifest.absolutePath, "--target-dir", pairingHostOutput.get().asFile.absolutePath)
