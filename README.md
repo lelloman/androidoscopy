@@ -1,7 +1,7 @@
 # Androidoscopy
 
 **Protocol v2:** app-defined diagnostic tools are now available over paired LAN
-sessions and desktop MCP. Debug apps start automatically; release apps require
+sessions and desktop MCP. On supported devices, debug apps start automatically; release apps require
 explicit activation and expire after inactivity. See [Sessions v2](docs/SESSIONS_V2.md)
 for setup, security, migration, and testing. The original v1 guide below applies
 only to the explicit `androidoscopy legacy` server.
@@ -54,6 +54,11 @@ androidoscopy uninstall
 ```
 
 ### 2. Add the SDK to Your Android App
+
+Diagnostic sessions use Android's built-in TLS on **Android 12+** by default.
+For sessions on **Android 7–11**, add and configure the optional `tls-compat`
+module; see [session integration](docs/SESSIONS_V2.md#android-integration).
+The core SDK does not bundle Conscrypt.
 
 Add the dependency to your app's `build.gradle.kts`:
 
@@ -179,6 +184,7 @@ androidoscopy/
 ├── android/
 │   ├── app/          # Demo application
 │   ├── sdk/          # Android SDK library (core)
+│   ├── tls-compat/   # Optional bundled TLS for Android 7–11 sessions
 │   └── sdk-ui/       # Embedded dashboard Activity (optional)
 ├── dashboard/        # Svelte web dashboard
 └── e2e/              # End-to-end tests
@@ -244,10 +250,15 @@ CI and JitPack use `./scripts/prepare-android-native.sh` for these build inputs.
 
 ```bash
 cd android
-./gradlew :sdk:test             # Unit tests
-./gradlew :sdk:connectedTest    # Instrumented tests
-./gradlew :sdk:assembleRelease  # AAR with all four native ABIs
+./gradlew :sdk:testDebugUnitTest  # Unit tests
+./gradlew :sdk:connectedDebugAndroidTest :tls-compat:connectedDebugAndroidTest
+./gradlew :sdk:assembleRelease :tls-compat:assembleRelease
 ```
+
+Device tests use platform TLS on Android 12+ and exercise bundled TLS in the
+optional compatibility module. CI is configured for API 24 and 31. Building
+`tls-compat` does not add it to the demo app; consumers must explicitly add the
+dependency and configure `legacyTlsProvider` to enable Android 7–11 sessions.
 
 ### E2E Tests
 

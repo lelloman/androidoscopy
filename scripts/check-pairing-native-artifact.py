@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify SDK AAR or app APK embeds every supported, 16 KiB aligned JNI ABI."""
+"""Verify default SDK/demo JNI ABIs, 16 KiB alignment, and absence of bundled TLS."""
 
 import struct
 import sys
@@ -33,6 +33,9 @@ def load_alignments(data: bytes) -> list[int]:
 def main(artifact: str) -> None:
     prefix = "jni" if artifact.endswith(".aar") else "lib"
     with zipfile.ZipFile(artifact) as package:
+        assert not any(name.endswith("/libconscrypt_jni.so") for name in package.namelist()), (
+            "Default SDK/demo must not bundle Conscrypt; it belongs only in optional tls-compat consumers"
+        )
         for abi in ABIS:
             member = f"{prefix}/{abi}/{LIBRARY}"
             entry = package.getinfo(member)

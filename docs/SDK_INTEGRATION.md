@@ -1,6 +1,9 @@
 # Androidoscopy SDK Integration Guide
 
 For protocol v2, release sessions and MCP tools, start with [Sessions v2](SESSIONS_V2.md).
+V2 sessions use platform TLS on Android 12+ by default; Android 7–11 sessions
+require the optional `tls-compat` dependency and provider configuration described
+in that guide. The core SDK can still be initialized on Android 7+.
 The guide below describes the original protocol v1 integration.
 
 This guide walks you through integrating the Androidoscopy SDK into your Android application.

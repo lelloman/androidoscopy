@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -14,13 +15,18 @@ import com.lelloman.androidoscopy.tools.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.net.ssl.SSLSocket
 import kotlin.time.Duration
 
 internal class SessionRuntime(val app: Application, val config: AndroidoscopyConfig) {
-    val state = MutableStateFlow(SessionState())
+    private val tlsProvider = selectSessionTlsProvider(Build.VERSION.SDK_INT, config.legacyTlsProvider)
+    val state = MutableStateFlow(SessionState(reason = if (tlsProvider == null) UNSUPPORTED_SESSION_TLS else null))
     val connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val dataFlow = MutableStateFlow<Map<String, Any>>(emptyMap())
     val logFlow = MutableStateFlow<List<LogEntry>>(emptyList())
@@ -34,6 +40,10 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
     private val providerJobs = ConcurrentHashMap<String, Job>()
     private val calls = ConcurrentHashMap<String, Job>()
     private val lock = Any()
+    // Accessed only under lock; java.time requires API 26 or consumer-side desugaring.
+    private val logTimestampFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
     private var revision = 0L
     @Volatile private var generation: String? = null
     @Volatile private var scope: CoroutineScope? = null
@@ -57,15 +67,16 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
             override fun onActivitySaveInstanceState(activity: Activity, saved: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}
         })
-        if (debug && config.sessionMode == SessionMode.AUTO) start()
+        if (tlsProvider != null && debug && config.sessionMode == SessionMode.AUTO) start()
     }
 
     fun start(timeout: Duration? = null) = synchronized(lock) {
+        val sessionTls = checkNotNull(tlsProvider) { UNSUPPORTED_SESSION_TLS }
         if (isActive) return@synchronized
         if (generation != null) stop("Session expired")
         check(debug || foreground) { "Start diagnostics from a foreground Activity" }
         if (Build.VERSION.SDK_INT >= 37 && app.applicationInfo.targetSdkVersion >= 37)
-            check(app.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") == 0) { "Local network permission required" }
+            check(app.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") == PackageManager.PERMISSION_GRANTED) { "Local network permission required" }
         clock.start(if (debug) null else (timeout ?: config.releaseIdleTimeout).inWholeMilliseconds)
         val id = UUID.randomUUID().toString()
         generation = id
@@ -89,7 +100,7 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
                 config.providerFactories.forEach { registerDataProvider(it()) }
                 config.anrConfig?.let { registerDataProvider(com.lelloman.androidoscopy.anr.AnrDataProvider(it.thresholdMs, it.maxHistory)) }
                 while (generation == id && isActive) {
-                    val lan = LanSocket(app, peers.instanceId)
+                    val lan = LanSocket(app, peers.instanceId, sessionTls)
                     transport = lan
                     try {
                         val listener = lan.open()
@@ -190,7 +201,7 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
     fun log(level: LogLevel, tag: String?, message: String, throwable: Throwable?) = synchronized(lock) {
         if (!isActive || !config.enableLogging) return@synchronized
         val id = generation
-        val entry = LogEntry(java.time.Instant.now().toString(), level, tag, message.take(16_000), throwable?.stackTraceToString()?.take(32_000))
+        val entry = LogEntry(logTimestampFormat.format(Date()), level, tag, message.take(16_000), throwable?.stackTraceToString()?.take(32_000))
         logFlow.value = (logFlow.value + entry).takeLast(1000)
         scope?.launch { send(buildJsonObject {
             put("type", "LOG"); put("session", id)
@@ -211,7 +222,7 @@ internal class SessionRuntime(val app: Application, val config: AndroidoscopyCon
     private suspend fun serve(socket: SSLSocket, id: String) {
         try {
             socket.soTimeout = 10_000; socket.startHandshake()
-            val wire = FramedSocket(socket)
+            val wire = FramedSocket(socket, checkNotNull(tlsProvider))
             val exporter = wire.exporter()
             wire.write(buildJsonObject { put("type", "HELLO"); put("version", 2); put("session", id); put("device", peers.instanceId) })
             val hello = wire.read()

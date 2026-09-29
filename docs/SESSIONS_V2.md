@@ -8,8 +8,50 @@ the app's existing dashboard. There is no ADB requirement or cloud relay.
 
 Include `sdk` in **implementation**, not debugImplementation, for release support.
 Include `sdk-ui` for the optional non-exported session screen. Both publish as
-`com.github.lelloman.androidoscopy:<module>:2.0.0` to Maven Local; JitPack versions
+`com.github.lelloman.androidoscopy:<module>:2.0.2` to Maven Local; JitPack versions
 follow the selected Git tag or commit. Optional integrations remain opt-in.
+
+By default, diagnostic sessions require **Android 12+ (API 31)** and use Android's
+built-in TLS 1.3 provider and TLS key exporter. The SDK still supports installation
+on Android 7+; on Android 7–11 without the compatibility module, initialization
+stays inactive (including debug AUTO mode), `sessionState.reason` explains the
+requirement, and explicit `startSession()` throws `IllegalStateException` before
+starting any session resources.
+
+| Device | Default `sdk` | `sdk` with `tls-compat` configured |
+| --- | --- | --- |
+| Android 12+ (API 31+) | Sessions use platform TLS | Sessions still use platform TLS |
+| Android 7–11 (API 24–30) | Sessions unavailable; SDK initialization succeeds | Sessions use bundled Conscrypt |
+
+For diagnostic sessions on **Android 7–11**, add the optional `tls-compat` module
+at the same version as `sdk` and configure its provider:
+
+```kotlin
+// app/build.gradle.kts (use the same Git tag/commit as your sdk dependency)
+dependencies {
+    implementation("com.github.lelloman.androidoscopy:tls-compat:<version>")
+    // In this repository: implementation(project(":tls-compat"))
+}
+```
+
+Add the provider to your existing initialization block; initialize the SDK only once:
+
+```kotlin
+import com.lelloman.androidoscopy.Androidoscopy
+import com.lelloman.androidoscopy.tlscompat.ConscryptSessionTlsProvider
+
+Androidoscopy.init(this) {
+    appName = "My app"
+    legacyTlsProvider = ConscryptSessionTlsProvider()
+    // Existing tools, providers, dashboard and session configuration go here.
+}
+```
+
+Only `tls-compat` depends on bundled Conscrypt and its native TLS libraries.
+Android 12+ always selects platform TLS, even when compatibility is configured;
+the optional provider never changes the app's global security-provider list.
+Adding the module still packages its native libraries in that app. The SDK's
+separate native pairing-rate-limit library is unaffected.
 
 ```kotlin
 import com.lelloman.androidoscopy.Androidoscopy
@@ -35,8 +77,8 @@ Androidoscopy.init(this) {
 SessionActivity.launch(context)
 ```
 
-`FLAG_DEBUGGABLE` determines policy, not the SDK's build variant. Debug apps start
-automatically after initialization, without an inactivity deadline. Set
+`FLAG_DEBUGGABLE` determines policy, not the SDK's build variant. On supported
+devices, debug apps start automatically after initialization, without an inactivity deadline. Set
 `sessionMode = SessionMode.MANUAL` to opt out of automatic debug startup. Release
 apps **always** start inactive; `startSession(idleTimeout = N.minutes)` must be
 called from a foreground Activity. Default idle timeout is 15 minutes, configurable
@@ -154,6 +196,13 @@ close the connection without app data. Network reconnection never starts diagnos
 
 ## Migration and verification
 
+Earlier v2 SDK builds bundled Conscrypt in the core SDK. To retain diagnostic
+sessions on Android 7–11 when updating, add `tls-compat` and set
+`legacyTlsProvider` as shown above. Apps needing sessions only on Android 12+
+require no TLS configuration. The wire protocol, pairing codes, and remembered
+peer credentials are unchanged by provider selection; the desktop needs no
+protocol migration for this change. The SDK's minimum installation API remains 24.
+
 Protocol v1 and v2 are not wire compatible. `hostIp`/`port` are deprecated no-ops.
 Run `androidoscopy legacy` explicitly for old SDKs and open `/?legacy=1`; this is a
 separate legacy server with its original security model, never a v2 access path.
@@ -163,7 +212,10 @@ link here. The sdk-ui dashboard is no longer exported to external applications.
 ```sh
 cd android
 ANDROID_HOME=/path/to/sdk ./gradlew :sdk:testDebugUnitTest :okhttp:testDebugUnitTest \
-  :app:assembleDebug :app:assembleRelease :sdk:publishToMavenLocal :sdk-ui:publishToMavenLocal
+  :app:assembleDebug :app:assembleRelease :sdk:publishToMavenLocal :sdk-ui:publishToMavenLocal \
+  :tls-compat:publishToMavenLocal
+# With an Android device or emulator connected:
+./gradlew :sdk:connectedDebugAndroidTest :tls-compat:connectedDebugAndroidTest
 cd ../server
 cargo test --all-targets
 cd dashboard && npm run check && npm run build
@@ -180,11 +232,23 @@ the tools an app chooses to expose.
 The desktop suite covers bounded framing, TLS exporter/SAS agreement, stale-session
 rejection, local API authentication/Origin/Host checks, typed calls and cancellation.
 Android unit tests cover idle deadlines, schema validation, typed values, inactive
-HTTP capture and redaction. `:sdk:connectedDebugAndroidTest` exercises the actual
-Keystore-backed TLS 1.3 handshake and framing on Android 16; it passed on both
-the emulator and the physical CPH2493 phone.
+HTTP capture, redaction, and platform/compatibility TLS selection. CI is configured to run SDK and
+`tls-compat` device tests on API 24 and 31, covering unsupported-session startup,
+Keystore-backed compatibility TLS, and a configured SDK session. The default APK
+packaging check also rejects bundled Conscrypt.
 
-The minified release demo was also exercised on an isolated emulator: inactive
+For the optional TLS module change, local verification passed 120 SDK unit tests,
+four device tests on an Android 16 emulator, SDK and compatibility-module lint,
+and the minified release demo build. Device tests exercised platform TLS framing
+and exporter agreement, the packaged native pairing limiter, Conscrypt with an
+Android Keystore key, and a real SDK session with compatibility configured.
+The release APK was inspected and contains no `libconscrypt_jni.so`; the
+compatibility test APK contains all four Conscrypt ABIs. API 24/31 device tests
+are configured in CI but were not run locally for this change.
+
+Before this TLS module change, the Keystore TLS test passed on the Android 16
+emulator and physical CPH2493 phone. The minified release demo was also exercised
+on an isolated emulator: inactive
 startup, explicit activation, matching desktop/device pairing codes, tool discovery,
 a successful app-defined call over MCP, and Stop removing the MCP tools and foreground
 service. A temporary test-only tunnel crossed the emulator's NAT; it is not an SDK

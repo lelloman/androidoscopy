@@ -91,7 +91,6 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
-    implementation("org.conscrypt:conscrypt-android:2.5.2")
     implementation("com.networknt:json-schema-validator:1.0.87")
     implementation(libs.okhttp)
     api(libs.kotlinx.serialization.json)

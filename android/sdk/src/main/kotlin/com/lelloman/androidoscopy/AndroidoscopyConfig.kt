@@ -32,6 +32,8 @@ data class AnrConfig(
 )
 
 class AndroidoscopyConfig {
+    /** Optional TLS backend for diagnostic sessions on Android 7–11. Android 12+ uses platform TLS. */
+    var legacyTlsProvider: com.lelloman.androidoscopy.session.SessionTlsProvider? = null
     var sessionMode: SessionMode = SessionMode.AUTO
     var releaseIdleTimeout: Duration = 15.minutes
     internal val tools = linkedMapOf<String, Tool>()

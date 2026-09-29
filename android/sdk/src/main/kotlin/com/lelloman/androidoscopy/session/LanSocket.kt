@@ -8,7 +8,6 @@ import android.net.nsd.NsdServiceInfo
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import kotlinx.serialization.json.*
-import org.conscrypt.Conscrypt
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.math.BigInteger
@@ -24,14 +23,13 @@ import java.security.PrivateKey
 import java.security.cert.X509Certificate
 import javax.net.ssl.X509ExtendedKeyManager
 import javax.net.ssl.SSLEngine
-import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
 import javax.security.auth.x500.X500Principal
 
 internal const val MAX_FRAME = 1024 * 1024
 
-internal class FramedSocket(val socket: SSLSocket) {
+internal class FramedSocket(val socket: SSLSocket, private val tlsProvider: SessionTlsProvider) {
     private val input = DataInputStream(socket.inputStream)
     private val output = DataOutputStream(socket.outputStream)
     fun read(): JsonObject {
@@ -46,10 +44,14 @@ internal class FramedSocket(val socket: SSLSocket) {
         require(bytes.size in 1..MAX_FRAME) { "RESULT_TOO_LARGE" }
         output.writeInt(bytes.size); output.write(bytes); output.flush()
     }
-    fun exporter(): ByteArray = requireNotNull(Conscrypt.exportKeyingMaterial(socket, PairingCrypto.EXPORTER, null, 32))
+    fun exporter(): ByteArray = tlsProvider.exportKeyingMaterial(socket, PairingCrypto.EXPORTER, null, 32)
 }
 
-internal class LanSocket(private val context: Context, private val instanceId: String) {
+internal class LanSocket(
+    private val context: Context,
+    private val instanceId: String,
+    private val tlsProvider: SessionTlsProvider,
+) {
     private val nsd = context.getSystemService(NsdManager::class.java)
     private var registration: NsdManager.RegistrationListener? = null
     @Volatile private var server: SSLServerSocket? = null
@@ -72,7 +74,7 @@ internal class LanSocket(private val context: Context, private val instanceId: S
             KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore").run {
                 initialize(KeyGenParameterSpec.Builder("androidoscopy.tls.v2", KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
                     .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
-                    // Conscrypt's TLS engine supplies an already-hashed ECDSA digest.
+                    // TLS engines may supply an already-hashed ECDSA digest.
                     .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256)
                     .setCertificateSubject(X500Principal("CN=androidoscopy"))
                     .setCertificateSerialNumber(BigInteger.ONE)
@@ -93,7 +95,7 @@ internal class LanSocket(private val context: Context, private val instanceId: S
                 keyStore.getCertificateChain(alias).map { it as X509Certificate }.toTypedArray() else null
             override fun getPrivateKey(name: String?): PrivateKey? = if (name == alias) keyStore.getKey(alias, null) as PrivateKey else null
         }
-        val tls = SSLContext.getInstance("TLS", Conscrypt.newProvider()).apply { init(arrayOf(manager), null, null) }
+        val tls = tlsProvider.createContext().apply { init(arrayOf(manager), null, null) }
         return (tls.serverSocketFactory.createServerSocket(0, 2, address) as SSLServerSocket).also {
             it.enabledProtocols = arrayOf("TLSv1.3")
             server = it
