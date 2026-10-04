@@ -30,7 +30,6 @@ uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 toml = "0.8"
-tower-http = { version = "0.5", features = ["fs"] }
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 dirs = "5"
