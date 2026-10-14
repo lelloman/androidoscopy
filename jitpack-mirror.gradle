@@ -1,0 +1,15 @@
+// JitPack only (see jitpack.yml): its shared build hosts are often throttled by
+// Maven Central (HTTP 429). Resolve through Google's public Maven Central mirror
+// first; Maven Central itself stays as the fallback.
+def preferMirror = { RepositoryHandler repositories ->
+    def mirror = repositories.maven {
+        name = "MavenCentralGoogleMirror"
+        url = "https://maven-central.storage-download.googleapis.com/maven2/"
+    }
+    repositories.remove(mirror)
+    repositories.addFirst(mirror)
+}
+settingsEvaluated { settings ->
+    preferMirror(settings.pluginManagement.repositories)
+    preferMirror(settings.dependencyResolutionManagement.repositories)
+}
